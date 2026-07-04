@@ -100,85 +100,16 @@ describe('keybindings', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  describe('chords', () => {
-    it('fires after both parts', () => {
-      const handler = vi.fn();
-      service.add(KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyMod.CtrlCmd | KeyCode.KeyS), handler);
-
-      key(target, 'KeyK', { ctrl: true });
-      expect(handler).not.toHaveBeenCalled();
-      expect(service.isChordPending).toBe(true);
-
-      key(target, 'KeyS', { ctrl: true });
-      expect(handler).toHaveBeenCalledTimes(1);
-      expect(service.isChordPending).toBe(false);
-    });
-
-    it('modifier keydown between parts does not break the chord', () => {
-      const handler = vi.fn();
-      service.add(parseKeybinding('Ctrl+K Ctrl+S'), handler);
-      key(target, 'KeyK', { ctrl: true });
-      key(target, 'ControlLeft', { ctrl: true });
-      key(target, 'KeyS', { ctrl: true });
-      expect(handler).toHaveBeenCalledTimes(1);
-    });
-
-    it('an unmatched second key resets and is swallowed', () => {
-      const chordHandler = vi.fn();
-      const singleHandler = vi.fn();
-      service.add(parseKeybinding('Ctrl+K Ctrl+S'), chordHandler);
-      service.add(parseKeybinding('Ctrl+X'), singleHandler);
-
-      key(target, 'KeyK', { ctrl: true });
-      key(target, 'KeyX', { ctrl: true });
-      expect(chordHandler).not.toHaveBeenCalled();
-      expect(singleHandler).not.toHaveBeenCalled();
-      expect(service.isChordPending).toBe(false);
-
-      // Once the chord state is reset, singles work again.
-      key(target, 'KeyX', { ctrl: true });
-      expect(singleHandler).toHaveBeenCalledTimes(1);
-    });
-
-    it('a chord prefix shadows a single binding on the same combo', () => {
-      const single = vi.fn();
-      const chord = vi.fn();
-      service.add(parseKeybinding('Ctrl+K'), single);
-      service.add(parseKeybinding('Ctrl+K Ctrl+S'), chord);
-
-      key(target, 'KeyK', { ctrl: true });
-      expect(single).not.toHaveBeenCalled();
-      key(target, 'KeyS', { ctrl: true });
-      expect(chord).toHaveBeenCalledTimes(1);
-    });
-
-    it('pending chord expires after the timeout', () => {
-      vi.useFakeTimers();
-      try {
-        const handler = vi.fn();
-        service.add(parseKeybinding('Ctrl+K Ctrl+S'), handler);
-        key(target, 'KeyK', { ctrl: true });
-        expect(service.isChordPending).toBe(true);
-        vi.advanceTimersByTime(5001);
-        expect(service.isChordPending).toBe(false);
-        key(target, 'KeyS', { ctrl: true });
-        expect(handler).not.toHaveBeenCalled();
-      } finally {
-        vi.useRealTimers();
-      }
-    });
-
-    it('two chords sharing a prefix both work', () => {
-      const a = vi.fn();
-      const b = vi.fn();
-      service.add(parseKeybinding('Ctrl+K Ctrl+S'), a);
-      service.add(parseKeybinding('Ctrl+K Ctrl+C'), b);
-
-      key(target, 'KeyK', { ctrl: true });
-      key(target, 'KeyC', { ctrl: true });
-      expect(a).not.toHaveBeenCalled();
-      expect(b).toHaveBeenCalledTimes(1);
-    });
+  it('chord encodings register nothing (chords live in chordKeybindings)', () => {
+    const handler = vi.fn();
+    const off = service.add(
+      KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyMod.CtrlCmd | KeyCode.KeyS),
+      handler
+    );
+    key(target, 'KeyK', { ctrl: true });
+    key(target, 'KeyS', { ctrl: true });
+    expect(handler).not.toHaveBeenCalled();
+    off(); // unsubscribing the no-op is safe
   });
 
   it('handler disposing its own binding does not skip others', () => {

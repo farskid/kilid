@@ -29,6 +29,11 @@ export {
   type Unsubscribe,
 } from './keyboard.js';
 export {
+  chordKeybindings,
+  type ChordKeybindings,
+  type ChordKeybindingsOptions,
+} from './chords.js';
+export {
   MouseButton,
   pointerBindings,
   type PointerBindings,

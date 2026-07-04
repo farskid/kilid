@@ -22,19 +22,26 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  */
 const SCENARIOS = [
   {
-    name: 'core: keybindings only',
+    name: 'core: keybindings only (no chords)',
     code: `import { keybindings } from './dist/index.js'; console.log(keybindings);`,
-    budget: 3_900,
+    budget: 3_500,
+  },
+  {
+    name: 'core: keybindings + chords',
+    code: `import { chordKeybindings } from './dist/index.js'; console.log(chordKeybindings);`,
+    budget: 4_200,
   },
   {
     name: 'core: keyboard + pointer',
     code: `import { keybindings, pointerBindings } from './dist/index.js'; console.log(keybindings, pointerBindings);`,
-    budget: 5_800,
+    budget: 5_500,
   },
   {
+    // Grows with every added feature by design (it imports both dispatchers);
+    // real apps import one of the scenarios above.
     name: 'core: everything (incl. parse/format)',
     code: `export * from './dist/index.js';`,
-    budget: 7_800,
+    budget: 8_300,
   },
   {
     name: 'react adapter (all hooks, react external)',

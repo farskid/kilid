@@ -1,15 +1,15 @@
 import { bench, describe } from 'vitest';
-import { KeyChord, KeyCode, KeyMod, keybindings } from '../src/index.js';
+import { KeyChord, KeyCode, KeyMod, chordKeybindings } from '../src/index.js';
 
 // Benchmarks run against a detached element in happy-dom; numbers are
 // relative (dispatch cost per event), not absolute browser figures.
 
 function makeService(bindingCount: number): {
   target: HTMLElement;
-  service: ReturnType<typeof keybindings>;
+  service: ReturnType<typeof chordKeybindings>;
 } {
   const target = document.createElement('div');
-  const service = keybindings(target, { isMac: false });
+  const service = chordKeybindings(target, { isMac: false });
   // Spread bindings across many combos so the maps are realistically sized.
   for (let i = 0; i < bindingCount; i++) {
     const keyCode = KeyCode.KeyA + (i % 26);

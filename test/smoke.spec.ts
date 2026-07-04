@@ -33,7 +33,7 @@ test('keyboard: Ctrl+K Ctrl+S chord completes', async ({ page }) => {
     const w = window as KilidWindow;
     const target = document.getElementById('target')!;
     w.__calls = [];
-    const svc = w.__kilid.keybindings(target, { isMac: false });
+    const svc = w.__kilid.chordKeybindings(target, { isMac: false });
     svc.add(
       w.__kilid.KeyChord(
         w.__kilid.KeyMod.CtrlCmd | w.__kilid.KeyCode.KeyK,

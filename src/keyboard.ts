@@ -21,21 +21,18 @@ export interface KeybindingsOptions {
   readonly isMac?: boolean | undefined;
   /** Attach listeners in the capture phase. Defaults to `false`. */
   readonly capture?: boolean | undefined;
-  /** Milliseconds before a pending chord prefix is abandoned. Defaults to `5000`. */
-  readonly chordTimeout?: number | undefined;
 }
 
 export interface Keybindings {
   /**
    * Register a keybinding using the Monaco-style numeric encoding
-   * (`KeyMod.CtrlCmd | KeyCode.KeyS`, `KeyChord(...)`). For string bindings,
-   * parse explicitly: `add(parseKeybinding('Ctrl+K Ctrl+S'), ...)` — kept out
-   * of the core so the parser only ships to bundles that use it.
-   * Invalid encodings register nothing. Returns an unsubscribe function.
+   * (`KeyMod.CtrlCmd | KeyCode.KeyS`). For string bindings, parse explicitly:
+   * `add(parseKeybinding('Ctrl+S'), ...)` — kept out of the core so the
+   * parser only ships to bundles that use it. Chord encodings require
+   * `chordKeybindings` from `kilid` (separate module); here they register
+   * nothing, as do invalid encodings. Returns an unsubscribe function.
    */
   add(keybinding: number, handler: KeybindingHandler, options?: KeybindingOptions): Unsubscribe;
-  /** Whether a chord prefix is currently pending (e.g. `Ctrl+K` was pressed). */
-  readonly isChordPending: boolean;
   /** Remove all bindings and the DOM listener. */
   dispose(): void;
 }
@@ -43,17 +40,30 @@ export interface Keybindings {
 /**
  * A registered binding. Monomorphic on purpose: every record has the same
  * shape so dispatch stays inline-cached in V8.
+ * @internal shared with chordKeybindings.
  */
-interface Binding {
+export interface Binding {
   readonly handler: KeybindingHandler;
   readonly when: (() => boolean) | undefined;
   readonly preventDefault: boolean;
   readonly stopPropagation: boolean;
 }
 
-const NOOP: Unsubscribe = () => {};
+/** @internal */
+export const NOOP: Unsubscribe = () => {};
 
-function insert(map: Map<number, Binding[]>, hash: number, binding: Binding): Unsubscribe {
+/** @internal */
+export function makeBinding(handler: KeybindingHandler, opts: KeybindingOptions): Binding {
+  return {
+    handler,
+    when: opts.when,
+    preventDefault: opts.preventDefault ?? true,
+    stopPropagation: opts.stopPropagation ?? false,
+  };
+}
+
+/** @internal */
+export function insert(map: Map<number, Binding[]>, hash: number, binding: Binding): Unsubscribe {
   let list = map.get(hash);
   if (list === undefined) {
     list = [];
@@ -71,12 +81,13 @@ function insert(map: Map<number, Binding[]>, hash: number, binding: Binding): Un
   };
 }
 
-function dispatch(bindings: Binding[] | undefined, event: KeyboardEvent): boolean {
+/** @internal */
+export function dispatch(bindings: Binding[] | undefined, event: KeyboardEvent): boolean {
   if (bindings === undefined) {
     return false;
   }
   let fired = false;
-  // Handlers may dispose bindings (including their own) mid-dispatch. To
+  // Handlers may unsubscribe bindings (including their own) mid-dispatch. To
   // stay zero-allocation we don't snapshot the list; instead we only
   // advance the index while the slot still holds the binding we just ran.
   for (let i = 0; i < bindings.length; ) {
@@ -100,111 +111,58 @@ function dispatch(bindings: Binding[] | undefined, event: KeyboardEvent): boolea
   return fired;
 }
 
+/** @internal Hash for a keydown event, or -1 for lone modifier presses. */
+export function eventHash(event: KeyboardEvent): number {
+  const keyCode = keyCodeFromEvent(event);
+  // A lone modifier press must not resolve or cancel anything; the real
+  // key of the combination is still on its way down.
+  if (isModifierKeyCode(keyCode)) {
+    return -1;
+  }
+  return chordHashFromParts(event.ctrlKey, event.shiftKey, event.altKey, event.metaKey, keyCode);
+}
+
 /**
- * Create a keybinding dispatcher on `target`, including two-part chords
- * (`Ctrl+K Ctrl+S`), using a single `keydown` listener.
+ * Create a keybinding dispatcher on `target` for single-part bindings
+ * (`Cmd+S`, `F2`, `Ctrl+Shift+P`) using one `keydown` listener.
+ *
+ * Two-part chords (`Ctrl+K Ctrl+S`) live in `chordKeybindings`, a separate
+ * module, so bundles that never use chords don't ship the chord state
+ * machine.
  *
  * Hot path per event: compute one integer hash from the event, one `Map`
- * lookup (two while a chord is pending). No allocations.
+ * lookup. No allocations.
  *
  * A factory (not a class) so every piece of internal state minifies to a
  * single-letter closure variable instead of an unmangleable property name.
  */
 export function keybindings(target: EventTarget, options: KeybindingsOptions = {}): Keybindings {
   const isMac = options.isMac ?? detectIsMac();
-  const chordTimeout = options.chordTimeout ?? 5000;
   const capture = options.capture ?? false;
 
-  /** Single-part bindings, keyed by chord hash. */
+  /** Bindings keyed by chord hash. */
   const single = new Map<number, Binding[]>();
-  /** Chord bindings: first-part hash -> second-part hash -> bindings. */
-  const chords = new Map<number, Map<number, Binding[]>>();
-
-  /** Hash of the pending first chord part, or -1. */
-  let pending = -1;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-
-  const clearPending = (): void => {
-    pending = -1;
-    if (timer !== undefined) {
-      clearTimeout(timer);
-      timer = undefined;
-    }
-  };
 
   const onKeyDown = (e: Event): void => {
-    const event = e as KeyboardEvent;
-    const keyCode = keyCodeFromEvent(event);
-    // A lone modifier press must not resolve or cancel anything; the real
-    // key of the combination is still on its way down.
-    if (isModifierKeyCode(keyCode)) {
-      return;
+    const hash = eventHash(e as KeyboardEvent);
+    if (hash !== -1) {
+      dispatch(single.get(hash), e as KeyboardEvent);
     }
-    const hash = chordHashFromParts(event.ctrlKey, event.shiftKey, event.altKey, event.metaKey, keyCode);
-
-    if (pending !== -1) {
-      const secondLevel = chords.get(pending);
-      clearPending();
-      if (secondLevel !== undefined && dispatch(secondLevel.get(hash), event)) {
-        return;
-      }
-      // The second keypress neither completed a chord nor should it trigger
-      // single bindings — VS Code swallows it too ("(Ctrl+K) was pressed,
-      // waiting for second key" then an unmatched key just resets).
-      return;
-    }
-
-    if (chords.has(hash)) {
-      pending = hash;
-      event.preventDefault();
-      timer = setTimeout(clearPending, chordTimeout);
-      return;
-    }
-
-    dispatch(single.get(hash), event);
   };
 
   target.addEventListener('keydown', onKeyDown, { capture });
 
   return {
-    get isChordPending() {
-      return pending !== -1;
-    },
     add(keybinding, handler, opts = {}) {
       const parts = decodeKeybinding(keybinding, isMac);
-      if (parts === null) {
+      // Chord encodings (parts.length === 2) belong to chordKeybindings.
+      if (parts === null || parts.length !== 1) {
         return NOOP;
       }
-      const binding: Binding = {
-        handler,
-        when: opts.when,
-        preventDefault: opts.preventDefault ?? true,
-        stopPropagation: opts.stopPropagation ?? false,
-      };
-      const firstHash = chordHash(parts[0]!);
-      const secondPart = parts[1];
-
-      if (secondPart === undefined) {
-        return insert(single, firstHash, binding);
-      }
-
-      let secondLevel = chords.get(firstHash);
-      if (secondLevel === undefined) {
-        secondLevel = new Map();
-        chords.set(firstHash, secondLevel);
-      }
-      const remove = insert(secondLevel, chordHash(secondPart), binding);
-      return () => {
-        remove();
-        if (secondLevel.size === 0) {
-          chords.delete(firstHash);
-        }
-      };
+      return insert(single, chordHash(parts[0]!), makeBinding(handler, opts));
     },
     dispose() {
-      clearPending();
       single.clear();
-      chords.clear();
       target.removeEventListener('keydown', onKeyDown, { capture });
     },
   };
