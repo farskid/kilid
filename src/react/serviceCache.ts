@@ -1,6 +1,5 @@
-import { KeybindingService } from '../keyboard.js';
-import { MouseBindingService } from '../mouse.js';
-import { PointerBindingService } from '../pointer.js';
+import { keybindings, type Keybindings } from '../keyboard.js';
+import { pointerBindings, type PointerBindings } from '../pointer.js';
 
 /**
  * Refcounted, per-target service sharing.
@@ -45,12 +44,5 @@ class ServiceCache<T extends { dispose(): void }> {
   }
 }
 
-export const keyboardServices = new ServiceCache<KeybindingService>(
-  (target) => new KeybindingService(target)
-);
-export const mouseServices = new ServiceCache<MouseBindingService>(
-  (target) => new MouseBindingService(target)
-);
-export const pointerServices = new ServiceCache<PointerBindingService>(
-  (target) => new PointerBindingService(target)
-);
+export const keyboardServices = new ServiceCache<Keybindings>((target) => keybindings(target));
+export const pointerServices = new ServiceCache<PointerBindings>((target) => pointerBindings(target));

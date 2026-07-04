@@ -22,24 +22,24 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  */
 const SCENARIOS = [
   {
-    name: 'core: KeybindingService only',
-    code: `import { KeybindingService } from './dist/index.js'; console.log(KeybindingService);`,
-    budget: 5_250,
+    name: 'core: keybindings only',
+    code: `import { keybindings } from './dist/index.js'; console.log(keybindings);`,
+    budget: 3_900,
   },
   {
-    name: 'core: all three services',
-    code: `import { KeybindingService, MouseBindingService, PointerBindingService } from './dist/index.js'; console.log(KeybindingService, MouseBindingService, PointerBindingService);`,
-    budget: 9_250,
+    name: 'core: keyboard + pointer',
+    code: `import { keybindings, pointerBindings } from './dist/index.js'; console.log(keybindings, pointerBindings);`,
+    budget: 5_800,
   },
   {
     name: 'core: everything (incl. parse/format)',
     code: `export * from './dist/index.js';`,
-    budget: 11_500,
+    budget: 7_800,
   },
   {
     name: 'react adapter (all hooks, react external)',
     code: `export * from './dist/react/index.js';`,
-    budget: 12_500,
+    budget: 8_600,
     external: ['react'],
   },
 ];

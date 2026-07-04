@@ -3,6 +3,7 @@ export {
   KEY_CODE_MAX,
   keyCodeFromEvent,
   isModifierKeyCode,
+  type KeyCodeName,
 } from './keyCodes.js';
 export {
   KeyMod,
@@ -20,25 +21,20 @@ export {
   type FormatOptions,
 } from './format.js';
 export {
-  KeybindingService,
+  keybindings,
+  type Keybindings,
   type KeybindingHandler,
   type KeybindingOptions,
-  type KeybindingServiceOptions,
+  type KeybindingsOptions,
+  type Unsubscribe,
 } from './keyboard.js';
 export {
   MouseButton,
-  MouseBindingService,
-  type MouseEventKind,
-  type MouseBindingHandler,
-  type MouseBindingOptions,
-  type MouseBindingServiceOptions,
-} from './mouse.js';
-export {
-  PointerBindingService,
+  pointerBindings,
+  type PointerBindings,
   type PointerEventKind,
   type PointerType,
   type PointerBindingHandler,
   type PointerBindingOptions,
-  type PointerBindingServiceOptions,
+  type PointerBindingsOptions,
 } from './pointer.js';
-export { DisposableStore, toDisposable, addDisposableListener, type IDisposable } from './lifecycle.js';

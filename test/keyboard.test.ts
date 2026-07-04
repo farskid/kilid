@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { KeyChord, KeyCode, KeyMod, KeybindingService, parseKeybinding } from '../src/index.js';
+import { KeyChord, KeyCode, KeyMod, keybindings, parseKeybinding } from '../src/index.js';
 
 function key(
   target: EventTarget,
@@ -19,13 +19,13 @@ function key(
   return event;
 }
 
-describe('KeybindingService', () => {
+describe('keybindings', () => {
   let target: HTMLElement;
-  let service: KeybindingService;
+  let service: ReturnType<typeof keybindings>;
 
   beforeEach(() => {
     target = document.createElement('div');
-    service = new KeybindingService(target, { isMac: false });
+    service = keybindings(target, { isMac: false });
   });
 
   afterEach(() => {
@@ -45,7 +45,7 @@ describe('KeybindingService', () => {
   });
 
   it('resolves CtrlCmd to meta on mac', () => {
-    const macService = new KeybindingService(target, { isMac: true });
+    const macService = keybindings(target, { isMac: true });
     const handler = vi.fn();
     macService.add(KeyMod.CtrlCmd | KeyCode.KeyS, handler);
 
@@ -83,11 +83,11 @@ describe('KeybindingService', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it('dispose removes a single binding', () => {
+  it('unsubscribe removes a single binding', () => {
     const handler = vi.fn();
-    const disposable = service.add(KeyCode.F2, handler);
+    const off = service.add(KeyCode.F2, handler);
     key(target, 'F2');
-    disposable.dispose();
+    off();
     key(target, 'F2');
     expect(handler).toHaveBeenCalledTimes(1);
   });
@@ -183,11 +183,11 @@ describe('KeybindingService', () => {
 
   it('handler disposing its own binding does not skip others', () => {
     const calls: string[] = [];
-    const d1 = service.add(
+    const off1 = service.add(
       KeyCode.F3,
       () => {
         calls.push('first');
-        d1.dispose();
+        off1();
       },
       { preventDefault: false }
     );
