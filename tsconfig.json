@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "types": []
   },
-  "include": ["src", "test", "bench"]
+  "include": ["src", "test/**/*.test.ts", "bench", "playwright.config.ts"]
 }

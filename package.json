@@ -13,6 +13,14 @@
     "typescript"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farskid/kilid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/farskid/kilid/issues"
+  },
+  "homepage": "https://github.com/farskid/kilid#readme",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -33,10 +41,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "bench": "vitest bench --run"
+    "test:browser": "playwright test",
+    "bench": "vitest bench --run",
+    "prepublishOnly": "npm run build && npm run typecheck && npm test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.1",
     "happy-dom": "^18.0.1",
+    "serve": "^14.2.4",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"

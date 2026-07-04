@@ -1,5 +1,7 @@
 # kilid
 
+[![CI](https://github.com/farskid/kilid/actions/workflows/ci.yml/badge.svg)](https://github.com/farskid/kilid/actions/workflows/ci.yml)
+
 Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API.
 
 - **Monaco-compatible encoding** — `KeyMod.CtrlCmd | KeyCode.KeyS`, `KeyChord(...)`, same bit layout.
@@ -103,9 +105,10 @@ Run `npm run bench` for numbers. Dispatch cost is flat with respect to the numbe
 
 ```bash
 npm install
-npm test        # vitest + happy-dom
-npm run bench   # dispatch benchmarks
-npm run build   # tsup -> dist (esm + cjs + d.ts)
+npm test              # unit tests (vitest + happy-dom)
+npm run test:browser  # smoke tests (Playwright + Chromium)
+npm run bench         # dispatch benchmarks
+npm run build         # tsup -> dist (esm + cjs + d.ts)
 ```
 
 ## License
