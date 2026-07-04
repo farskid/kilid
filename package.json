@@ -1,0 +1,44 @@
+{
+  "name": "kilid",
+  "version": "0.1.0",
+  "description": "Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API",
+  "keywords": [
+    "keyboard",
+    "keybinding",
+    "shortcut",
+    "hotkey",
+    "chord",
+    "mouse",
+    "pointer",
+    "typescript"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --sourcemap",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "vitest bench --run"
+  },
+  "devDependencies": {
+    "happy-dom": "^18.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
