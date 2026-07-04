@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>kilid — fast, tiny keyboard, mouse & pointer bindings for TypeScript</title>
+<meta name="description" content="Zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API. 1.6 KB gzipped core, zero-allocation dispatch, opt-in chords, tree-shakeable React adapter." />
+<style>
+  :root {
+    --bg: #0b0e14;
+    --bg-soft: #11151f;
+    --bg-card: #151a26;
+    --border: #232a3a;
+    --text: #e6e9f0;
+    --text-dim: #9aa3b5;
+    --accent: #7aa2f7;
+    --accent-2: #9ece6a;
+    --accent-3: #e0af68;
+    --code-str: #9ece6a;
+    --code-kw: #bb9af7;
+    --code-fn: #7aa2f7;
+    --code-num: #ff9e64;
+    --code-cm: #565f89;
+    --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+  header.site {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(11,14,20,.85); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  header.site .wrap { display: flex; align-items: center; gap: 24px; height: 56px; }
+  .logo { font-family: var(--mono); font-weight: 700; font-size: 18px; color: var(--text); }
+  .logo span { color: var(--accent); }
+  nav { display: flex; gap: 18px; margin-left: auto; font-size: 14px; }
+  nav a { color: var(--text-dim); }
+  nav a:hover { color: var(--text); text-decoration: none; }
+
+  .hero { padding: 88px 0 56px; text-align: center; }
+  .hero h1 {
+    font-size: clamp(34px, 6vw, 56px); line-height: 1.1; font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.tag { margin: 20px auto 0; max-width: 640px; color: var(--text-dim); font-size: 19px; }
+  .badges { margin-top: 26px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .badge {
+    font-family: var(--mono); font-size: 13px; padding: 5px 12px;
+    border: 1px solid var(--border); border-radius: 99px; color: var(--text-dim);
+  }
+  .badge b { color: var(--accent-2); font-weight: 600; }
+  .install {
+    margin: 34px auto 0; display: inline-flex; align-items: center; gap: 14px;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 20px; font-family: var(--mono); font-size: 15px;
+  }
+  .install span.dollar { color: var(--code-cm); user-select: none; }
+  .cta { margin-top: 26px; display: flex; gap: 14px; justify-content: center; }
+  .btn {
+    display: inline-block; padding: 10px 22px; border-radius: 8px; font-weight: 600; font-size: 15px;
+  }
+  .btn.primary { background: var(--accent); color: #0b0e14; }
+  .btn.primary:hover { filter: brightness(1.1); text-decoration: none; }
+  .btn.ghost { border: 1px solid var(--border); color: var(--text); }
+  .btn.ghost:hover { border-color: var(--accent); text-decoration: none; }
+
+  .demo {
+    margin: 56px auto 0; max-width: 560px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 12px; padding: 26px; text-align: center;
+  }
+  .demo p { color: var(--text-dim); font-size: 14px; }
+  .demo .keys {
+    margin-top: 14px; min-height: 64px; display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--accent);
+    letter-spacing: .04em;
+  }
+  .demo .keys.idle { color: var(--code-cm); font-size: 16px; font-weight: 400; }
+
+  section { padding: 64px 0 8px; }
+  section h2 {
+    font-size: 26px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 6px;
+    scroll-margin-top: 80px;
+  }
+  section > .wrap > p.lede { color: var(--text-dim); margin-bottom: 22px; max-width: 760px; }
+  h3 { font-size: 18px; margin: 30px 0 8px; scroll-margin-top: 80px; }
+  h3 code { font-family: var(--mono); color: var(--accent); font-size: 17px; }
+  section p { color: var(--text-dim); margin: 8px 0; max-width: 760px; }
+  section p code, section li code, td code {
+    font-family: var(--mono); font-size: 13.5px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 5px; padding: 1.5px 6px; color: var(--text);
+  }
+  ul.plain { margin: 10px 0 10px 22px; color: var(--text-dim); }
+  ul.plain li { margin: 5px 0; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; margin-top: 26px; }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+  }
+  .card h4 { font-size: 15px; margin-bottom: 6px; }
+  .card h4 code { font-family: var(--mono); color: var(--accent); }
+  .card p { font-size: 14px; color: var(--text-dim); }
+
+  pre {
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px; overflow-x: auto; margin: 14px 0 22px;
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
+  }
+  pre code { color: var(--text); }
+  .tok-kw { color: var(--code-kw); }
+  .tok-str { color: var(--code-str); }
+  .tok-fn { color: var(--code-fn); }
+  .tok-num { color: var(--code-num); }
+  .tok-cm { color: var(--code-cm); font-style: italic; }
+
+  table { border-collapse: collapse; width: 100%; margin: 14px 0 22px; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-dim); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+  td { color: var(--text); }
+  td.dim, td .dim { color: var(--text-dim); }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-family: var(--mono); }
+
+  footer {
+    margin-top: 88px; border-top: 1px solid var(--border); padding: 34px 0 44px;
+    color: var(--text-dim); font-size: 14px;
+  }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <div class="logo"><span>⌘</span> kilid</div>
+    <nav>
+      <a href="#quick-start">Quick start</a>
+      <a href="#api">API</a>
+      <a href="#react">React</a>
+      <a href="#performance">Performance</a>
+      <a href="https://github.com/farskid/kilid">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>Keyboard, mouse &amp; pointer bindings<br /><em>the Monaco way</em></h1>
+    <p class="tag">
+      A zero-dependency TypeScript library for input management with the keybinding API you know
+      from VS Code — packed into a couple of kilobytes with zero-allocation dispatch.
+    </p>
+    <div class="badges">
+      <span class="badge">core <b>1.6 KB</b> gzip</span>
+      <span class="badge">with chords <b>1.8 KB</b> gzip</span>
+      <span class="badge"><b>0</b> dependencies</span>
+      <span class="badge"><b>~2.5M</b> dispatches/sec</span>
+      <span class="badge">tree-shakeable</span>
+    </div>
+    <div class="install"><span class="dollar">$</span> npm install kilid</div>
+    <div class="cta">
+      <a class="btn primary" href="#quick-start">Get started</a>
+      <a class="btn ghost" href="https://github.com/farskid/kilid">Star on GitHub</a>
+    </div>
+
+    <div class="demo">
+      <p>Try it — press any key combination</p>
+      <div class="keys idle" id="demo-keys">click here, then press e.g. Ctrl+Shift+P</div>
+    </div>
+  </div>
+</div>
+
+<section id="why">
+  <div class="wrap">
+    <h2>Why kilid</h2>
+    <div class="grid">
+      <div class="card">
+        <h4>Monaco-compatible encoding</h4>
+        <p>Bindings are single numbers: <code>KeyMod.CtrlCmd | KeyCode.KeyS</code>, chords via <code>KeyChord(...)</code> — the exact bit layout Monaco and VS Code use.</p>
+      </div>
+      <div class="card">
+        <h4>Zero-allocation dispatch</h4>
+        <p>Every event reduces to one integer hash and one <code>Map</code> lookup. No strings, objects or closures are created on the hot path — flat cost at any binding count.</p>
+      </div>
+      <div class="card">
+        <h4>Pay only for what you use</h4>
+        <p>Chords, string parsing, the pointer service and the React adapter are separate modules. A <code>Cmd+S</code>-only app ships 1.6 KB.</p>
+      </div>
+      <div class="card">
+        <h4>Cross-platform by default</h4>
+        <p><code>KeyMod.CtrlCmd</code> means Cmd on macOS and Ctrl elsewhere. One binding, correct everywhere, resolved once at registration.</p>
+      </div>
+      <div class="card">
+        <h4>Layout-independent</h4>
+        <p>Bindings match physical keys via <code>KeyboardEvent.code</code> — like Monaco — with an <code>event.key</code> fallback for exotic keyboards.</p>
+      </div>
+      <div class="card">
+        <h4>One pointing surface</h4>
+        <p>Pointer events subsume mouse. A single service covers down/move/click/wheel with the same modifier encoding, plus pen/touch filters.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="quick-start">
+  <div class="wrap">
+    <h2>Quick start</h2>
+    <pre><code>import { KeyMod, KeyCode, keybindings } from 'kilid';
+
+const keys = keybindings(window);
+
+// Cmd+S on macOS, Ctrl+S elsewhere — a single-part binding
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, (e) =&gt; save());
+
+// Guards and event control
+const off = keys.add(KeyMod.CtrlCmd | KeyCode.KeyP, quickOpen, {
+  when: () =&gt; !modalIsOpen,  // evaluated at dispatch
+  preventDefault: true,       // default true for keyboard
+});
+
+off();          // add() returns an unsubscribe function
+keys.dispose(); // removes all bindings and the DOM listener</code></pre>
+  </div>
+</section>
+
+<section id="api">
+  <div class="wrap">
+    <h2>API reference</h2>
+    <p class="lede">
+      Everything ships from two entry points: <code>kilid</code> (core) and <code>kilid/react</code>
+      (adapter). All factories return plain objects; all <code>add()</code> calls return an
+      unsubscribe function. Invalid encodings register nothing — the core never throws.
+    </p>
+
+    <h3><code>keybindings(target, options?)</code></h3>
+    <p>
+      Single-part keybinding dispatcher (<code>Cmd+S</code>, <code>F2</code>,
+      <code>Ctrl+Shift+P</code>) using one <code>keydown</code> listener.
+      Options: <code>isMac</code> (override platform detection), <code>capture</code>.
+    </p>
+    <pre><code>const keys = keybindings(element, { isMac: false });
+const off = keys.add(encoded, handler, { when, preventDefault, stopPropagation });
+keys.dispose();</code></pre>
+
+    <h3><code>chordKeybindings(target, options?)</code></h3>
+    <p>
+      Drop-in superset of <code>keybindings</code> that also handles two-part chords
+      (<code>Ctrl+K Ctrl+S</code>) with VS Code semantics: a chord prefix shadows single bindings
+      on the same combo, an unmatched second key is swallowed, and the pending prefix expires after
+      <code>chordTimeout</code> (default 5000 ms). Separate module — apps without chords never ship
+      the state machine. Note: <code>Cmd+S</code> is a single binding with a modifier, <em>not</em>
+      a chord; chords are two sequential keypresses.
+    </p>
+    <pre><code>import { KeyChord, chordKeybindings } from 'kilid';
+
+const keys = chordKeybindings(window);
+keys.add(
+  KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyMod.CtrlCmd | KeyCode.KeyS),
+  openKeyboardShortcuts
+);
+keys.isChordPending; // true between Ctrl+K and the second part</code></pre>
+
+    <h3><code>pointerBindings(target, options?)</code></h3>
+    <p>
+      One service for the whole pointing surface. Event kinds:
+      <code>down</code>, <code>up</code>, <code>move</code>, <code>enter</code>, <code>leave</code>,
+      <code>cancel</code>, <code>click</code>, <code>dblclick</code>, <code>contextmenu</code>,
+      <code>wheel</code>. DOM listeners attach lazily per kind and detach when the last binding of
+      that kind unsubscribes. <code>preventDefault</code> defaults to <code>false</code> here.
+    </p>
+    <pre><code>import { KeyMod, MouseButton, pointerBindings } from 'kilid';
+
+const pointer = pointerBindings(element);
+
+pointer.add(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection);
+pointer.add(MouseButton.Middle, 'down', startPan);
+pointer.add(KeyMod.CtrlCmd | MouseButton.WheelUp, 'wheel', zoomIn, { preventDefault: true });
+
+// pen/touch filters
+pointer.add(MouseButton.Left, 'move', onDraw, { pointerType: ['pen', 'touch'] });</code></pre>
+    <p>
+      For <code>move</code>/<code>enter</code>/<code>leave</code>/<code>cancel</code> (where
+      <code>button</code> is <code>-1</code>), bindings on <code>MouseButton.Left</code> match
+      regardless of held buttons — use <code>when</code> with <code>event.buttons</code> for
+      stricter filtering.
+    </p>
+
+    <h3>Encoding: <code>KeyMod</code>, <code>KeyCode</code>, <code>MouseButton</code>, <code>KeyChord</code></h3>
+    <p>A binding is one 32-bit number, in Monaco's exact bit layout:</p>
+    <pre><code>15 14 13 12 11 10  9  8  7 ... 0
+ -  -  C  S  A  W  [ key code ]     C = CtrlCmd  S = Shift  A = Alt  W = WinCtrl
+
+KeyChord(first, second)  // packs the second part into bits 16–31</code></pre>
+    <table>
+      <tr><th>Export</th><th>Meaning</th></tr>
+      <tr><td><code>KeyMod.CtrlCmd</code></td><td class="dim">Cmd on macOS, Ctrl on Windows/Linux</td></tr>
+      <tr><td><code>KeyMod.WinCtrl</code></td><td class="dim">Ctrl on macOS, Win/Meta on Windows/Linux</td></tr>
+      <tr><td><code>KeyMod.Shift</code>, <code>KeyMod.Alt</code></td><td class="dim">Shift; Alt (Option on macOS)</td></tr>
+      <tr><td><code>KeyCode.*</code></td><td class="dim">Layout-independent key codes — <code>KeyA–Z</code>, <code>Digit0–9</code>, <code>F1–19</code>, <code>Numpad0–9</code>, <code>Enter</code>, <code>Escape</code>, arrows, punctuation, … (names match <code>KeyboardEvent.code</code>)</td></tr>
+      <tr><td><code>MouseButton.*</code></td><td class="dim"><code>Left</code>, <code>Middle</code>, <code>Right</code>, <code>X1</code>, <code>X2</code>, <code>WheelUp/Down/Left/Right</code></td></tr>
+      <tr><td><code>keyCodeFromEvent(e)</code></td><td class="dim">Resolve a live <code>KeyboardEvent</code> to a key code</td></tr>
+      <tr><td><code>isModifierKeyCode(c)</code></td><td class="dim">True for Shift/Ctrl/Alt/Meta</td></tr>
+      <tr><td><code>decodeKeybinding(n, isMac)</code></td><td class="dim">Encoded binding → platform-resolved parts</td></tr>
+    </table>
+
+    <h3>Strings: <code>parseKeybinding</code> / <code>formatKeybinding</code></h3>
+    <p>
+      String convenience lives in its own module with lazily built tables, so it only ships to
+      bundles that import it. The core <code>add()</code> is numeric-only by design — the parser is
+      never pulled in behind your back.
+    </p>
+    <pre><code>import { parseKeybinding, formatKeybinding } from 'kilid';
+
+keys.add(parseKeybinding('Ctrl+Shift+P'), quickOpen);
+keys.add(parseKeybinding('Ctrl+K Ctrl+S'), openShortcuts); // chordKeybindings only
+
+formatKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS);                  // "Ctrl+S"
+formatKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, { isMac: true }); // "⌘S"</code></pre>
+    <p>
+      In strings, <code>Ctrl</code>, <code>Cmd</code>, <code>Meta</code> and <code>Mod</code> all
+      map to <code>KeyMod.CtrlCmd</code> so one string works on every platform; use
+      <code>WinCtrl</code>/<code>Super</code> for the secondary modifier. Also exported:
+      <code>keyCodeToString</code>, <code>keyCodeFromString</code> (accepts aliases like
+      <code>Esc</code>).
+    </p>
+  </div>
+</section>
+
+<section id="react">
+  <div class="wrap">
+    <h2>React adapter</h2>
+    <p class="lede">
+      <code>kilid/react</code> is a separate build entry with <code>react</code> as an optional
+      peer dependency — if you never import it, no React-related code enters your bundle.
+    </p>
+    <pre><code>import { KeyMod, KeyCode, MouseButton } from 'kilid';
+import { useKeybinding, usePointerBinding } from 'kilid/react';
+
+function Editor() {
+  const canvasRef = useRef&lt;HTMLCanvasElement&gt;(null);
+
+  useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, save);   // window by default
+  useKeybinding('Ctrl+K Ctrl+S', openShortcuts);        // strings OK here
+
+  usePointerBinding(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection, {
+    target: canvasRef,
+  });
+  usePointerBinding(MouseButton.Left, 'move', onDraw, {
+    target: canvasRef,
+    pointerType: ['pen', 'touch'],
+  });
+
+  return &lt;canvas ref={canvasRef} /&gt;;
+}</code></pre>
+    <p>
+      Hook options: <code>target</code> (EventTarget or ref, default <code>window</code>),
+      <code>when</code>, <code>enabled</code>, <code>preventDefault</code>,
+      <code>stopPropagation</code>, and <code>pointerType</code> (pointer hook only).
+    </p>
+    <ul class="plain">
+      <li><b>Latest-ref handlers</b> — inline closures are fine; changing the handler or guard re-registers nothing and costs zero per-render work.</li>
+      <li><b>Structural deps only</b> — bindings re-register only when the encoding, target, kind or flags actually change; inline <code>pointerType</code> arrays cause no churn.</li>
+      <li><b>Refcounted service sharing</b> — all hooks on the same target share one service, so the whole app has one <code>keydown</code> listener; the last unmount disposes it.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="performance">
+  <div class="wrap">
+    <h2>Performance &amp; size</h2>
+    <p class="lede">
+      The hot path for every event: bitwise hash (modifiers + code packed into one int) → one
+      integer-keyed <code>Map.get()</code> → handler call. Zero allocations, matched or not.
+      Dispatch cost is flat with respect to the number of registered bindings
+      (~2.5M dispatches/sec in benchmarks, 10 vs 500 bindings within 10%).
+    </p>
+    <table>
+      <tr><th>Bundle scenario</th><th class="num">Minified</th><th class="num">Gzipped</th></tr>
+      <tr><td><code>keybindings</code> only (no chords)</td><td class="num">3.3 KB</td><td class="num">1.6 KB</td></tr>
+      <tr><td><code>chordKeybindings</code></td><td class="num">3.7 KB</td><td class="num">1.8 KB</td></tr>
+      <tr><td>Keyboard + pointer</td><td class="num">5.1 KB</td><td class="num">2.3 KB</td></tr>
+      <tr><td>Everything incl. parse/format</td><td class="num">7.8 KB</td><td class="num">3.3 KB</td></tr>
+    </table>
+    <p>
+      Sizes are enforced in CI with per-scenario budgets and reported as a comment on every pull
+      request. Size-oriented design: factories instead of classes (state minifies to single-letter
+      closure variables), the <code>KeyCode</code> table generated at runtime from packed strings
+      (typed statically via a template-literal union), no reverse enum mappings, no defensive
+      throws, and every convenience layer in its own tree-shakeable module.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>MIT © kilid contributors</div>
+    <div><a href="https://github.com/farskid/kilid">GitHub</a> · <a href="https://www.npmjs.com/package/kilid">npm</a></div>
+  </div>
+</footer>
+
+<script>
+// Tiny syntax highlighter — keywords, strings, comments, numbers, calls.
+(function () {
+  var KW = /\b(import|from|const|let|var|function|return|new|typeof|export|default|if|else|for|while|true|false|null|undefined|void|this|class|extends|interface|type|readonly)\b/g;
+  document.querySelectorAll('pre code').forEach(function (el) {
+    var src = el.innerHTML;
+    src = src
+      .replace(/(\/\/[^\n]*)/g, '\u0001$1\u0002')
+      .replace(/('(?:[^'\\]|\\.)*')/g, '\u0003$1\u0004')
+      .replace(/\b(\d+)\b/g, '<span class="tok-num">$1</span>')
+      .replace(KW, '<span class="tok-kw">$1</span>')
+      .replace(/([A-Za-z_$][\w$]*)(\()/g, '<span class="tok-fn">$1</span>$2')
+      .replace(/\u0001([\s\S]*?)\u0002/g, function (_, m) {
+        return '<span class="tok-cm">' + m.replace(/<[^>]*>/g, function (t) {
+          return t.replace(/<span class="[^"]*">|<\/span>/g, '');
+        }) + '</span>';
+      })
+      .replace(/\u0003([\s\S]*?)\u0004/g, function (_, m) {
+        return '<span class="tok-str">' + m.replace(/<span class="[^"]*">|<\/span>/g, '') + '</span>';
+      });
+    el.innerHTML = src;
+  });
+})();
+
+// Live demo: shows the pressed combination Monaco-label style.
+(function () {
+  var el = document.getElementById('demo-keys');
+  var isMac = /mac|iphone|ipad/i.test(navigator.platform || '');
+  var timer;
+  function label(e) {
+    var parts = [];
+    if (isMac) {
+      if (e.ctrlKey) parts.push('\u2303');
+      if (e.altKey) parts.push('\u2325');
+      if (e.shiftKey) parts.push('\u21E7');
+      if (e.metaKey) parts.push('\u2318');
+    } else {
+      if (e.ctrlKey) parts.push('Ctrl');
+      if (e.shiftKey) parts.push('Shift');
+      if (e.altKey) parts.push('Alt');
+      if (e.metaKey) parts.push('Win');
+    }
+    var code = e.code || '';
+    var key =
+      code.indexOf('Key') === 0 ? code.slice(3) :
+      code.indexOf('Digit') === 0 ? code.slice(5) :
+      code.indexOf('Arrow') === 0 ? code.slice(5) :
+      /^(Shift|Control|Alt|Meta)/.test(code) ? '' :
+      code || e.key;
+    if (key) parts.push(key);
+    return parts.join(isMac ? '' : '+');
+  }
+  el.tabIndex = 0;
+  el.addEventListener('click', function () { el.focus(); });
+  window.addEventListener('keydown', function (e) {
+    var text = label(e);
+    if (!text) return;
+    if (document.activeElement === el || el.contains(document.activeElement)) e.preventDefault();
+    el.classList.remove('idle');
+    el.textContent = text;
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      el.classList.add('idle');
+      el.textContent = 'press another combination\u2026';
+    }, 2500);
+  });
+})();
+</script>
+</body>
+</html>

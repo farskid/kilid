@@ -4,6 +4,8 @@
 
 Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API. Optional tree-shakeable React adapter via `kilid/react`.
 
+**[Landing page & docs →](https://farskid.github.io/kilid/)**
+
 - **Monaco-compatible encoding** — `KeyMod.CtrlCmd | KeyCode.KeyS`, `KeyChord(...)`, same bit layout.
 - **Chords, pay-per-use** — `Ctrl+K Ctrl+S` with a proper state machine and timeout, like VS Code, via `chordKeybindings()`; apps that only use single bindings (`Cmd+S`) never ship the chord machinery.
 - **One pointing surface** — pointer events subsume mouse; a single service covers `down`/`move`/... plus `click`, `dblclick`, `contextmenu` and `wheel`, with `KeyMod` composing over `MouseButton` so `Cmd+Click` (mac) / `Ctrl+Click` (win/linux) is one binding.
