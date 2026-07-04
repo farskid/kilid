@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/farskid/kilid/actions/workflows/ci.yml/badge.svg)](https://github.com/farskid/kilid/actions/workflows/ci.yml)
 
-Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API.
+Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API. Optional tree-shakeable React adapter via `kilid/react`.
 
 - **Monaco-compatible encoding** — `KeyMod.CtrlCmd | KeyCode.KeyS`, `KeyChord(...)`, same bit layout.
 - **Chords** — `Ctrl+K Ctrl+S` with a proper state machine and timeout, like VS Code.
@@ -89,6 +89,54 @@ pointer.add(MouseButton.Left, 'move', onDraw, { pointerType: ['pen', 'touch'] })
 
 Event kinds: `'down' | 'up' | 'move' | 'enter' | 'leave' | 'cancel'`.
 For `move`/`enter`/`leave`/`cancel` (where `button` is `-1`), bindings on `MouseButton.Left` match regardless of held buttons; use `when` with `event.buttons` for stricter filtering.
+
+## React
+
+The React adapter lives in a separate subpath export, `kilid/react`. It is a
+separate build entry with `react` as an optional peer dependency — if you never
+import it, no React-related code enters your bundle (verified with esbuild:
+a core-only bundle contains zero references to React).
+
+```tsx
+import { KeyMod, KeyCode, MouseButton } from 'kilid';
+import { useKeybinding, useMouseBinding, usePointerBinding } from 'kilid/react';
+
+function Editor() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Binds to window by default; unbinds on unmount.
+  useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, save);
+  useKeybinding('Ctrl+K Ctrl+S', openShortcuts);
+
+  // Element-scoped via ref targets.
+  useMouseBinding(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection, {
+    target: canvasRef,
+  });
+  usePointerBinding(MouseButton.Left, 'move', onDraw, {
+    target: canvasRef,
+    pointerType: ['pen', 'touch'],
+  });
+
+  return <canvas ref={canvasRef} />;
+}
+```
+
+Hook options: `target` (EventTarget or ref, default `window`), `when`,
+`enabled`, `preventDefault`, `stopPropagation`, and `pointerType` (pointer
+hook only).
+
+The adapter is built for render-heavy apps:
+
+- **Latest-ref handlers** — inline closures are fine. Changing the handler or
+  `when` guard re-registers nothing; the registered listener reads the current
+  function from a ref at dispatch. Zero per-render work.
+- **Structural deps only** — bindings re-register only when the encoded
+  binding, target, event kind, or dispatch flags actually change. Inline
+  `pointerType` arrays are serialized to a primitive dep, so new array
+  identities per render cause no churn.
+- **Refcounted service sharing** — all hooks bound to the same target share
+  one service instance, so the whole app has one `keydown` listener no matter
+  how many components use hotkeys. The last unmounting hook disposes it.
 
 ## Performance
 

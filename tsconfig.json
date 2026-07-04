@@ -4,6 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2020", "DOM"],
+    "jsx": "react-jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
@@ -13,5 +14,5 @@
     "skipLibCheck": true,
     "types": []
   },
-  "include": ["src", "test/**/*.test.ts", "bench", "playwright.config.ts"]
+  "include": ["src", "test/**/*.test.ts", "test/**/*.test.tsx", "bench", "playwright.config.ts"]
 }
