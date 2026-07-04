@@ -1,15 +1,24 @@
-export { KeyCode, KeyCodeUtils } from './keyCodes.js';
+export {
+  KeyCode,
+  KEY_CODE_MAX,
+  keyCodeFromEvent,
+  isModifierKeyCode,
+} from './keyCodes.js';
 export {
   KeyMod,
   KeyChord,
   decodeKeybinding,
-  parseKeybinding,
-  formatKeybinding,
   chordHash,
   chordHashFromParts,
   type ResolvedChord,
-  type FormatOptions,
 } from './keybindings.js';
+export {
+  parseKeybinding,
+  formatKeybinding,
+  keyCodeToString,
+  keyCodeFromString,
+  type FormatOptions,
+} from './format.js';
 export {
   KeybindingService,
   type KeybindingHandler,

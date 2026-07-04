@@ -32,8 +32,9 @@ keys.add(
   () => openKeyboardShortcuts()
 );
 
-// Strings parse to the same encoding (once, at registration)
-keys.add('Ctrl+K Ctrl+S', () => openKeyboardShortcuts());
+// String bindings parse explicitly — the parser only ships to bundles
+// that import it, keeping the core service lean.
+keys.add(parseKeybinding('Ctrl+K Ctrl+S'), () => openKeyboardShortcuts());
 
 // Guards and event control
 const binding = keys.add(KeyMod.CtrlCmd | KeyCode.KeyP, quickOpen, {
@@ -148,6 +149,27 @@ The hot path for every event is: bitwise hash (modifiers + code packed into one 
 - Chord state is a single pending-hash integer plus a timeout handle.
 
 Run `npm run bench` for numbers. Dispatch cost is flat with respect to the number of registered bindings.
+
+## Bundle size
+
+Sizes are enforced in CI (`npm run size`) with per-scenario budgets, and every
+PR gets a size-report comment. Current numbers (esbuild, minified / gzipped):
+
+| Scenario | Minified | Gzipped |
+|---|---:|---:|
+| `KeybindingService` only | 4.9 KB | 2.2 KB |
+| All three services | 8.7 KB | 3.1 KB |
+| Everything incl. parse/format | 10.8 KB | 3.9 KB |
+
+Size-oriented design choices:
+
+- `KeyCode` is a plain const object, not an enum — no reverse name mapping is
+  shipped, and its member names double as the `KeyboardEvent.code` lookup
+  table, so event resolution needs almost no extra data.
+- String parsing/formatting (`parseKeybinding`, `formatKeybinding`) lives in a
+  separate module with lazily built tables; it costs nothing unless imported.
+- The core service API is numeric-only, so the parser is never pulled in
+  behind your back.
 
 ## Development
 

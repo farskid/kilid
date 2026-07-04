@@ -7,19 +7,21 @@ import { detectIsMac } from './platform.js';
  * {@link KeyCode} would occupy so {@link KeyMod} flags compose with them:
  * `KeyMod.CtrlCmd | MouseButton.Left`.
  */
-export enum MouseButton {
-  Left = 1,
-  Middle = 2,
-  Right = 3,
+export const MouseButton = {
+  Left: 1,
+  Middle: 2,
+  Right: 3,
   /** Typically "browser back". */
-  X1 = 4,
+  X1: 4,
   /** Typically "browser forward". */
-  X2 = 5,
-  WheelUp = 6,
-  WheelDown = 7,
-  WheelLeft = 8,
-  WheelRight = 9,
-}
+  X2: 5,
+  WheelUp: 6,
+  WheelDown: 7,
+  WheelLeft: 8,
+  WheelRight: 9,
+} as const;
+
+export type MouseButton = (typeof MouseButton)[keyof typeof MouseButton];
 
 /** `MouseEvent.button` (0-based) -> {@link MouseButton}. */
 function buttonFromEvent(button: number): MouseButton | 0 {

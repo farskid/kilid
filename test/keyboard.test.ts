@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { KeyChord, KeyCode, KeyMod, KeybindingService } from '../src/index.js';
+import { KeyChord, KeyCode, KeyMod, KeybindingService, parseKeybinding } from '../src/index.js';
 
 function key(
   target: EventTarget,
@@ -58,7 +58,7 @@ describe('KeybindingService', () => {
 
   it('accepts string bindings', () => {
     const handler = vi.fn();
-    service.add('Ctrl+Shift+P', handler);
+    service.add(parseKeybinding('Ctrl+Shift+P'), handler);
     key(target, 'KeyP', { ctrl: true, shift: true });
     expect(handler).toHaveBeenCalledTimes(1);
   });
@@ -116,7 +116,7 @@ describe('KeybindingService', () => {
 
     it('modifier keydown between parts does not break the chord', () => {
       const handler = vi.fn();
-      service.add('Ctrl+K Ctrl+S', handler);
+      service.add(parseKeybinding('Ctrl+K Ctrl+S'), handler);
       key(target, 'KeyK', { ctrl: true });
       key(target, 'ControlLeft', { ctrl: true });
       key(target, 'KeyS', { ctrl: true });
@@ -126,8 +126,8 @@ describe('KeybindingService', () => {
     it('an unmatched second key resets and is swallowed', () => {
       const chordHandler = vi.fn();
       const singleHandler = vi.fn();
-      service.add('Ctrl+K Ctrl+S', chordHandler);
-      service.add('Ctrl+X', singleHandler);
+      service.add(parseKeybinding('Ctrl+K Ctrl+S'), chordHandler);
+      service.add(parseKeybinding('Ctrl+X'), singleHandler);
 
       key(target, 'KeyK', { ctrl: true });
       key(target, 'KeyX', { ctrl: true });
@@ -143,8 +143,8 @@ describe('KeybindingService', () => {
     it('a chord prefix shadows a single binding on the same combo', () => {
       const single = vi.fn();
       const chord = vi.fn();
-      service.add('Ctrl+K', single);
-      service.add('Ctrl+K Ctrl+S', chord);
+      service.add(parseKeybinding('Ctrl+K'), single);
+      service.add(parseKeybinding('Ctrl+K Ctrl+S'), chord);
 
       key(target, 'KeyK', { ctrl: true });
       expect(single).not.toHaveBeenCalled();
@@ -156,7 +156,7 @@ describe('KeybindingService', () => {
       vi.useFakeTimers();
       try {
         const handler = vi.fn();
-        service.add('Ctrl+K Ctrl+S', handler);
+        service.add(parseKeybinding('Ctrl+K Ctrl+S'), handler);
         key(target, 'KeyK', { ctrl: true });
         expect(service.isChordPending).toBe(true);
         vi.advanceTimersByTime(5001);
@@ -171,8 +171,8 @@ describe('KeybindingService', () => {
     it('two chords sharing a prefix both work', () => {
       const a = vi.fn();
       const b = vi.fn();
-      service.add('Ctrl+K Ctrl+S', a);
-      service.add('Ctrl+K Ctrl+C', b);
+      service.add(parseKeybinding('Ctrl+K Ctrl+S'), a);
+      service.add(parseKeybinding('Ctrl+K Ctrl+C'), b);
 
       key(target, 'KeyK', { ctrl: true });
       key(target, 'KeyC', { ctrl: true });

@@ -48,6 +48,7 @@
     "test:watch": "vitest",
     "test:browser": "playwright test",
     "bench": "vitest bench --run",
+    "size": "node scripts/check-size.mjs",
     "prepublishOnly": "npm run build && npm run typecheck && npm test"
   },
   "peerDependencies": {
@@ -60,6 +61,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.54.1",
+    "esbuild": "^0.25.0",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.17",
     "happy-dom": "^18.0.1",

@@ -14,7 +14,7 @@
  *   (one DOM listener per event type across the whole app).
  */
 import { useEffect, useRef, type RefObject } from 'react';
-import { parseKeybinding } from '../keybindings.js';
+import { parseKeybinding } from '../format.js';
 import type { KeybindingHandler } from '../keyboard.js';
 import type { MouseBindingHandler, MouseEventKind } from '../mouse.js';
 import type { PointerBindingHandler, PointerEventKind, PointerType } from '../pointer.js';

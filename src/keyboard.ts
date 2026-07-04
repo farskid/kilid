@@ -1,9 +1,8 @@
-import { KeyCode, KeyCodeUtils } from './keyCodes.js';
+import { isModifierKeyCode, keyCodeFromEvent } from './keyCodes.js';
 import {
   chordHashFromParts,
   chordHash,
   decodeKeybinding,
-  parseKeybinding,
   type ResolvedChord,
 } from './keybindings.js';
 import { addDisposableListener, DisposableStore, toDisposable, type IDisposable } from './lifecycle.js';
@@ -79,13 +78,14 @@ export class KeybindingService implements IDisposable {
   }
 
   /**
-   * Register a keybinding. Accepts Monaco-style encodings
-   * (`KeyMod.CtrlCmd | KeyCode.KeyS`, `KeyChord(...)`) or strings
-   * (`"Ctrl+K Ctrl+S"`). Returns a disposable that removes the binding.
+   * Register a keybinding using the Monaco-style numeric encoding
+   * (`KeyMod.CtrlCmd | KeyCode.KeyS`, `KeyChord(...)`). For string bindings,
+   * parse explicitly: `add(parseKeybinding('Ctrl+K Ctrl+S'), ...)` — kept out
+   * of the core so the parser only ships to bundles that use it.
+   * Returns a disposable that removes the binding.
    */
-  add(keybinding: number | string, handler: KeybindingHandler, options: KeybindingOptions = {}): IDisposable {
-    const encoded = typeof keybinding === 'string' ? parseKeybinding(keybinding) : keybinding;
-    const parts = decodeKeybinding(encoded, this._isMac);
+  add(keybinding: number, handler: KeybindingHandler, options: KeybindingOptions = {}): IDisposable {
+    const parts = decodeKeybinding(keybinding, this._isMac);
     if (parts === null) {
       throw new Error(`Invalid keybinding: ${keybinding}`);
     }
@@ -145,10 +145,10 @@ export class KeybindingService implements IDisposable {
   }
 
   private _onKeyDown(event: KeyboardEvent): void {
-    const keyCode = KeyCodeUtils.fromKeyboardEvent(event);
+    const keyCode = keyCodeFromEvent(event);
     // A lone modifier press must not resolve or cancel anything; the real
     // key of the combination is still on its way down.
-    if (KeyCodeUtils.isModifierKey(keyCode)) {
+    if (isModifierKeyCode(keyCode)) {
       return;
     }
     const hash = chordHashFromParts(event.ctrlKey, event.shiftKey, event.altKey, event.metaKey, keyCode);
