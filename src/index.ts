@@ -1,35 +1,45 @@
-export { KeyCode, KeyCodeUtils } from './keyCodes.js';
+export {
+  KeyCode,
+  KEY_CODE_MAX,
+  keyCodeFromEvent,
+  isModifierKeyCode,
+  type KeyCodeName,
+} from './keyCodes.js';
 export {
   KeyMod,
   KeyChord,
   decodeKeybinding,
-  parseKeybinding,
-  formatKeybinding,
   chordHash,
   chordHashFromParts,
   type ResolvedChord,
-  type FormatOptions,
 } from './keybindings.js';
 export {
-  KeybindingService,
+  parseKeybinding,
+  formatKeybinding,
+  keyCodeToString,
+  keyCodeFromString,
+  type FormatOptions,
+} from './format.js';
+export {
+  keybindings,
+  type Keybindings,
   type KeybindingHandler,
   type KeybindingOptions,
-  type KeybindingServiceOptions,
+  type KeybindingsOptions,
+  type Unsubscribe,
 } from './keyboard.js';
 export {
-  MouseButton,
-  MouseBindingService,
-  type MouseEventKind,
-  type MouseBindingHandler,
-  type MouseBindingOptions,
-  type MouseBindingServiceOptions,
-} from './mouse.js';
+  chordKeybindings,
+  type ChordKeybindings,
+  type ChordKeybindingsOptions,
+} from './chords.js';
 export {
-  PointerBindingService,
+  MouseButton,
+  pointerBindings,
+  type PointerBindings,
   type PointerEventKind,
   type PointerType,
   type PointerBindingHandler,
   type PointerBindingOptions,
-  type PointerBindingServiceOptions,
+  type PointerBindingsOptions,
 } from './pointer.js';
-export { DisposableStore, toDisposable, addDisposableListener, type IDisposable } from './lifecycle.js';

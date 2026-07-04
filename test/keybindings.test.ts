@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   KeyChord,
   KeyCode,
-  KeyCodeUtils,
   KeyMod,
   decodeKeybinding,
   formatKeybinding,
+  keyCodeFromEvent,
+  keyCodeFromString,
+  keyCodeToString,
   parseKeybinding,
 } from '../src/index.js';
 
@@ -88,16 +90,59 @@ describe('formatKeybinding', () => {
   });
 });
 
-describe('KeyCodeUtils', () => {
+describe('key code resolution', () => {
   it('maps KeyboardEvent.code first, falls back to key', () => {
-    expect(KeyCodeUtils.fromKeyboardEvent(new KeyboardEvent('keydown', { code: 'KeyZ', key: 'y' }))).toBe(
+    expect(keyCodeFromEvent(new KeyboardEvent('keydown', { code: 'KeyZ', key: 'y' }))).toBe(
       KeyCode.KeyZ
     );
-    expect(KeyCodeUtils.fromKeyboardEvent(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(
-      KeyCode.Enter
-    );
-    expect(KeyCodeUtils.fromKeyboardEvent(new KeyboardEvent('keydown', { key: '☃' }))).toBe(
-      KeyCode.Unknown
-    );
+    expect(keyCodeFromEvent(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(KeyCode.Enter);
+    expect(keyCodeFromEvent(new KeyboardEvent('keydown', { key: '☃' }))).toBe(KeyCode.Unknown);
+  });
+
+  it('resolves derived code families without table entries', () => {
+    const cases: Array<[string, KeyCode]> = [
+      ['KeyA', KeyCode.KeyA],
+      ['Digit7', KeyCode.Digit7],
+      ['F12', KeyCode.F12],
+      ['Numpad5', KeyCode.Numpad5],
+      ['NumpadEnter', KeyCode.NumpadEnter],
+      ['Semicolon', KeyCode.Semicolon],
+      ['BracketLeft', KeyCode.BracketLeft],
+      ['ArrowLeft', KeyCode.LeftArrow],
+      ['ShiftRight', KeyCode.Shift],
+      ['MetaLeft', KeyCode.Meta],
+      ['Pause', KeyCode.PauseBreak],
+    ];
+    for (const [code, expected] of cases) {
+      expect(keyCodeFromEvent(new KeyboardEvent('keydown', { code })), code).toBe(expected);
+    }
+  });
+
+  it('resolves single-char key values (letters, digits, punctuation)', () => {
+    const cases: Array<[string, KeyCode]> = [
+      ['k', KeyCode.KeyK],
+      ['K', KeyCode.KeyK],
+      ['3', KeyCode.Digit3],
+      [' ', KeyCode.Space],
+      [';', KeyCode.Semicolon],
+      ["'", KeyCode.Quote],
+      ['\\', KeyCode.Backslash],
+    ];
+    for (const [key, expected] of cases) {
+      expect(keyCodeFromEvent(new KeyboardEvent('keydown', { key })), JSON.stringify(key)).toBe(expected);
+    }
+  });
+
+  it('round-trips labels', () => {
+    expect(keyCodeToString(KeyCode.KeyK)).toBe('K');
+    expect(keyCodeToString(KeyCode.Digit0)).toBe('0');
+    expect(keyCodeToString(KeyCode.PageUp)).toBe('PageUp');
+    expect(keyCodeToString(KeyCode.Semicolon)).toBe(';');
+    expect(keyCodeFromString('K')).toBe(KeyCode.KeyK);
+    expect(keyCodeFromString('pageup')).toBe(KeyCode.PageUp);
+    expect(keyCodeFromString(';')).toBe(KeyCode.Semicolon);
+    expect(keyCodeFromString('semicolon')).toBe(KeyCode.Semicolon);
+    expect(keyCodeFromString('esc')).toBe(KeyCode.Escape);
+    expect(keyCodeFromString('bogus')).toBe(KeyCode.Unknown);
   });
 });

@@ -1,27 +1,27 @@
 import { expect, test } from '@playwright/test';
 
+interface KilidWindow extends Window {
+  __ready?: boolean;
+  __kilid: typeof import('../src/index.js');
+  __calls?: string[];
+  __defaultPrevented?: boolean;
+  __svc?: { isChordPending?: boolean };
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/test/fixtures/smoke.html');
   await page.waitForFunction(() => (window as KilidWindow).__ready === true);
   await page.focus('#target');
 });
 
-interface KilidWindow extends Window {
-  __ready?: boolean;
-  __kilid: typeof import('../src/index.js');
-  __calls?: string[];
-  __pending?: boolean;
-  __defaultPrevented?: boolean;
-}
-
 test('keyboard: Ctrl+S fires in a real browser', async ({ page }) => {
   await page.evaluate(() => {
     const w = window as KilidWindow;
     const target = document.getElementById('target')!;
     w.__calls = [];
-    const svc = new w.__kilid.KeybindingService(target, { isMac: false });
+    const svc = w.__kilid.keybindings(target, { isMac: false });
     svc.add(w.__kilid.KeyMod.CtrlCmd | w.__kilid.KeyCode.KeyS, () => w.__calls!.push('save'));
-    (window as KilidWindow & { __svc?: unknown }).__svc = svc;
+    w.__svc = svc;
   });
 
   await page.keyboard.press('Control+s');
@@ -33,7 +33,7 @@ test('keyboard: Ctrl+K Ctrl+S chord completes', async ({ page }) => {
     const w = window as KilidWindow;
     const target = document.getElementById('target')!;
     w.__calls = [];
-    const svc = new w.__kilid.KeybindingService(target, { isMac: false });
+    const svc = w.__kilid.chordKeybindings(target, { isMac: false });
     svc.add(
       w.__kilid.KeyChord(
         w.__kilid.KeyMod.CtrlCmd | w.__kilid.KeyCode.KeyK,
@@ -41,29 +41,27 @@ test('keyboard: Ctrl+K Ctrl+S chord completes', async ({ page }) => {
       ),
       () => w.__calls!.push('chord')
     );
-    (window as KilidWindow & { __svc?: InstanceType<typeof w.__kilid.KeybindingService> }).__svc = svc;
+    w.__svc = svc;
   });
 
   await page.keyboard.press('Control+k');
   await expect
-    .poll(async () =>
-      page.evaluate(() => (window as KilidWindow & { __svc?: { isChordPending: boolean } }).__svc!.isChordPending)
-    )
+    .poll(async () => page.evaluate(() => (window as KilidWindow).__svc!.isChordPending))
     .toBe(true);
   await page.keyboard.press('Control+s');
   await expect.poll(async () => page.evaluate(() => (window as KilidWindow).__calls)).toEqual(['chord']);
 });
 
-test('mouse: Ctrl+click fires with real modifier keys', async ({ page }) => {
+test('pointer: Ctrl+click fires with real modifier keys', async ({ page }) => {
   await page.evaluate(() => {
     const w = window as KilidWindow;
     const target = document.getElementById('target')!;
     w.__calls = [];
-    const svc = new w.__kilid.MouseBindingService(target, { isMac: false });
+    const svc = w.__kilid.pointerBindings(target, { isMac: false });
     svc.add(w.__kilid.KeyMod.CtrlCmd | w.__kilid.MouseButton.Left, 'click', () =>
       w.__calls!.push('ctrl-click')
     );
-    (window as KilidWindow & { __svc?: unknown }).__svc = svc;
+    w.__svc = svc;
   });
 
   await page.keyboard.down('Control');
@@ -74,16 +72,16 @@ test('mouse: Ctrl+click fires with real modifier keys', async ({ page }) => {
   ]);
 });
 
-test('mouse: wheel with ctrl modifier maps to WheelUp', async ({ page }) => {
+test('pointer: wheel with ctrl modifier maps to WheelUp', async ({ page }) => {
   await page.evaluate(() => {
     const w = window as KilidWindow;
     const target = document.getElementById('target')!;
     w.__calls = [];
-    const svc = new w.__kilid.MouseBindingService(target, { isMac: false });
+    const svc = w.__kilid.pointerBindings(target, { isMac: false });
     svc.add(w.__kilid.KeyMod.CtrlCmd | w.__kilid.MouseButton.WheelUp, 'wheel', () =>
       w.__calls!.push('zoom-in')
     );
-    (window as KilidWindow & { __svc?: unknown }).__svc = svc;
+    w.__svc = svc;
   });
 
   await page.keyboard.down('Control');
@@ -100,9 +98,9 @@ test('pointer: pointerType filter works in browser', async ({ page }) => {
     const w = window as KilidWindow;
     const target = document.getElementById('target')!;
     w.__calls = [];
-    const svc = new w.__kilid.PointerBindingService(target, { isMac: false });
+    const svc = w.__kilid.pointerBindings(target, { isMac: false });
     svc.add(w.__kilid.MouseButton.Left, 'down', () => w.__calls!.push('pen'), { pointerType: 'pen' });
-    (window as KilidWindow & { __svc?: unknown }).__svc = svc;
+    w.__svc = svc;
   });
 
   await page.locator('#target').dispatchEvent('pointerdown', { button: 0, pointerType: 'mouse' });
@@ -115,11 +113,11 @@ test('keyboard: preventDefault is applied on match', async ({ page }) => {
     const w = window as KilidWindow;
     const target = document.getElementById('target')!;
     w.__defaultPrevented = false;
-    const svc = new w.__kilid.KeybindingService(target, { isMac: false });
+    const svc = w.__kilid.keybindings(target, { isMac: false });
     svc.add(w.__kilid.KeyMod.CtrlCmd | w.__kilid.KeyCode.KeyP, (e) => {
       w.__defaultPrevented = e.defaultPrevented;
     });
-    (window as KilidWindow & { __svc?: unknown }).__svc = svc;
+    w.__svc = svc;
   });
 
   await page.keyboard.press('Control+p');

@@ -2,7 +2,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import { useRef, useState, type RefObject } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KeyCode, KeyMod, MouseButton } from '../src/index.js';
-import { useKeybinding, useMouseBinding, usePointerBinding } from '../src/react/index.js';
+import { useKeybinding, usePointerBinding } from '../src/react/index.js';
 
 function key(
   target: EventTarget,
@@ -145,14 +145,14 @@ describe('useKeybinding', () => {
   });
 });
 
-describe('useMouseBinding', () => {
+describe('usePointerBinding with mouse kinds', () => {
   it('dispatches modifier+button per kind', () => {
     const handler = vi.fn();
     let elRef: RefObject<HTMLDivElement | null> = { current: null };
     function Comp() {
       const ref = useRef<HTMLDivElement>(null);
       elRef = ref;
-      useMouseBinding(KeyMod.Shift | MouseButton.Left, 'click', handler, { target: ref });
+      usePointerBinding(KeyMod.Shift | MouseButton.Left, 'click', handler, { target: ref });
       return <div ref={ref} />;
     }
     render(<Comp />);

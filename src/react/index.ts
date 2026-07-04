@@ -14,11 +14,10 @@
  *   (one DOM listener per event type across the whole app).
  */
 import { useEffect, useRef, type RefObject } from 'react';
-import { parseKeybinding } from '../keybindings.js';
+import { parseKeybinding } from '../format.js';
 import type { KeybindingHandler } from '../keyboard.js';
-import type { MouseBindingHandler, MouseEventKind } from '../mouse.js';
 import type { PointerBindingHandler, PointerEventKind, PointerType } from '../pointer.js';
-import { keyboardServices, mouseServices, pointerServices } from './serviceCache.js';
+import { keyboardServices, pointerServices } from './serviceCache.js';
 
 export type BindingTarget = EventTarget | RefObject<EventTarget | null> | null | undefined;
 
@@ -37,8 +36,6 @@ interface CommonHookOptions {
 }
 
 export interface UseKeybindingOptions extends CommonHookOptions {}
-
-export interface UseMouseBindingOptions extends CommonHookOptions {}
 
 export interface UsePointerBindingOptions extends CommonHookOptions {
   readonly pointerType?: PointerType | readonly PointerType[] | undefined;
@@ -98,13 +95,13 @@ export function useKeybinding(
       return;
     }
     const service = keyboardServices.acquire(target);
-    const disposable = service.add(encoded, (e) => handlerRef.current(e), {
+    const off = service.add(encoded, (e) => handlerRef.current(e), {
       when: () => whenRef.current === undefined || whenRef.current(),
       preventDefault,
       stopPropagation,
     });
     return () => {
-      disposable.dispose();
+      off();
       keyboardServices.release(target);
     };
     // targetRef/handlerRef/whenRef are stable ref objects.
@@ -113,61 +110,22 @@ export function useKeybinding(
 }
 
 /**
- * Register a mouse binding, e.g.
+ * Register a pointer/mouse binding, e.g.
  *
  * ```tsx
- * useMouseBinding(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection, {
+ * usePointerBinding(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection, {
  *   target: listRef,
  * });
- * ```
- */
-export function useMouseBinding<K extends MouseEventKind>(
-  binding: number,
-  kind: K,
-  handler: MouseBindingHandler<K>,
-  options: UseMouseBindingOptions = {}
-): void {
-  const handlerRef = useLatestRef(handler);
-  const whenRef = useLatestRef(options.when);
-  const { enabled = true, preventDefault, stopPropagation } = options;
-  const targetRef = useLatestRef(options.target);
-
-  useEffect(() => {
-    if (!enabled) {
-      return;
-    }
-    const target = resolveTarget(targetRef.current);
-    if (target === null) {
-      return;
-    }
-    const service = mouseServices.acquire(target);
-    const disposable = service.add(binding, kind, (e) => handlerRef.current(e), {
-      when: () => whenRef.current === undefined || whenRef.current(),
-      preventDefault,
-      stopPropagation,
-    });
-    return () => {
-      disposable.dispose();
-      mouseServices.release(target);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [binding, kind, enabled, preventDefault, stopPropagation, resolveTarget(options.target)]);
-}
-
-/**
- * Register a pointer binding, e.g.
- *
- * ```tsx
  * usePointerBinding(MouseButton.Left, 'move', onDraw, {
  *   target: canvasRef,
  *   pointerType: ['pen', 'touch'],
  * });
  * ```
  */
-export function usePointerBinding(
+export function usePointerBinding<K extends PointerEventKind>(
   binding: number,
-  kind: PointerEventKind,
-  handler: PointerBindingHandler,
+  kind: K,
+  handler: PointerBindingHandler<K>,
   options: UsePointerBindingOptions = {}
 ): void {
   const handlerRef = useLatestRef(handler);
@@ -192,14 +150,14 @@ export function usePointerBinding(
       return;
     }
     const service = pointerServices.acquire(target);
-    const disposable = service.add(binding, kind, (e) => handlerRef.current(e), {
+    const off = service.add(binding, kind, ((e) => handlerRef.current(e)) as PointerBindingHandler<K>, {
       when: () => whenRef.current === undefined || whenRef.current(),
       preventDefault,
       stopPropagation,
       pointerType: pointerTypeKey === '' ? undefined : (pointerTypeKey.split(',') as PointerType[]),
     });
     return () => {
-      disposable.dispose();
+      off();
       pointerServices.release(target);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

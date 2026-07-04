@@ -1,9 +1,45 @@
 import { chordHashFromParts, decodeKeybinding } from './keybindings.js';
-import { MouseButton } from './mouse.js';
-import { addDisposableListener, toDisposable, type IDisposable } from './lifecycle.js';
+import type { Unsubscribe } from './keyboard.js';
 import { detectIsMac } from './platform.js';
 
-export type PointerEventKind = 'down' | 'up' | 'move' | 'enter' | 'leave' | 'cancel';
+/**
+ * Buttons and wheel directions, encoded in the same low bits a key code
+ * would occupy so `KeyMod` flags compose with them:
+ * `KeyMod.CtrlCmd | MouseButton.Left`.
+ */
+export const MouseButton = {
+  Left: 1,
+  Middle: 2,
+  Right: 3,
+  /** Typically "browser back". */
+  X1: 4,
+  /** Typically "browser forward". */
+  X2: 5,
+  WheelUp: 6,
+  WheelDown: 7,
+  WheelLeft: 8,
+  WheelRight: 9,
+} as const;
+
+export type MouseButton = (typeof MouseButton)[keyof typeof MouseButton];
+
+/**
+ * One service covers the full pointing surface. Pointer events subsume mouse
+ * in every modern browser, so a separate mouse service would be ~85%
+ * duplicated code; the only mouse-exclusive events are the click-family and
+ * wheel, which are folded in here as extra kinds.
+ */
+export type PointerEventKind =
+  | 'down'
+  | 'up'
+  | 'move'
+  | 'enter'
+  | 'leave'
+  | 'cancel'
+  | 'click'
+  | 'dblclick'
+  | 'contextmenu'
+  | 'wheel';
 
 const KIND_TO_DOM: Record<PointerEventKind, string> = {
   down: 'pointerdown',
@@ -12,182 +48,134 @@ const KIND_TO_DOM: Record<PointerEventKind, string> = {
   enter: 'pointerenter',
   leave: 'pointerleave',
   cancel: 'pointercancel',
+  click: 'click',
+  dblclick: 'dblclick',
+  contextmenu: 'contextmenu',
+  wheel: 'wheel',
 };
 
 export type PointerType = 'mouse' | 'pen' | 'touch';
 
-export type PointerBindingHandler = (event: PointerEvent) => void;
+export type PointerBindingHandler<K extends PointerEventKind = PointerEventKind> = (
+  event: K extends 'wheel'
+    ? WheelEvent
+    : K extends 'click' | 'dblclick' | 'contextmenu'
+      ? MouseEvent
+      : PointerEvent
+) => void;
 
 export interface PointerBindingOptions {
   readonly when?: (() => boolean) | undefined;
+  /** Defaults to `false` (unlike keyboard) — swallowing clicks/wheel by default breaks pages. */
   readonly preventDefault?: boolean | undefined;
   readonly stopPropagation?: boolean | undefined;
-  /** Only fire for these pointer types. Defaults to all. */
+  /**
+   * Only fire for these pointer types. Defaults to all. Events that don't
+   * carry a `pointerType` (plain mouse-event kinds in older browsers) match
+   * any filter.
+   */
   readonly pointerType?: PointerType | readonly PointerType[] | undefined;
 }
 
-export interface PointerBindingServiceOptions {
+export interface PointerBindingsOptions {
   readonly isMac?: boolean | undefined;
   readonly capture?: boolean | undefined;
 }
 
-/** Bit flags for fast pointer-type filtering at dispatch. */
-const enum PointerTypeMask {
-  Mouse = 1,
-  Pen = 2,
-  Touch = 4,
-  All = 7,
+export interface PointerBindings {
+  /**
+   * Register a binding, e.g.
+   * `pointer.add(KeyMod.CtrlCmd | MouseButton.Left, 'click', handler)`.
+   * Chord encodings register nothing. Returns an unsubscribe function.
+   */
+  add<K extends PointerEventKind>(
+    binding: number,
+    kind: K,
+    handler: PointerBindingHandler<K>,
+    options?: PointerBindingOptions
+  ): Unsubscribe;
+  /** Remove all bindings and DOM listeners. */
+  dispose(): void;
 }
 
-function pointerTypeMask(types: PointerType | readonly PointerType[] | undefined): number {
+/** Bit flags for fast pointer-type filtering at dispatch. */
+const TYPE_ALL = 7;
+
+function typeMaskOf(types: PointerType | readonly PointerType[] | undefined): number {
   if (types === undefined) {
-    return PointerTypeMask.All;
+    return TYPE_ALL;
   }
-  const list = typeof types === 'string' ? [types] : types;
   let mask = 0;
-  for (const type of list) {
-    mask |= type === 'mouse' ? PointerTypeMask.Mouse : type === 'pen' ? PointerTypeMask.Pen : PointerTypeMask.Touch;
+  for (const type of typeof types === 'string' ? [types] : types) {
+    mask |= type === 'mouse' ? 1 : type === 'pen' ? 2 : 4;
   }
   return mask;
 }
 
-function eventPointerTypeMask(pointerType: string): number {
-  switch (pointerType) {
-    case 'mouse':
-      return PointerTypeMask.Mouse;
-    case 'pen':
-      return PointerTypeMask.Pen;
-    case 'touch':
-      return PointerTypeMask.Touch;
-    default:
-      return 0;
-  }
-}
-
 interface PointerBinding {
-  readonly handler: PointerBindingHandler;
+  readonly handler: (event: Event) => void;
   readonly when: (() => boolean) | undefined;
   readonly preventDefault: boolean;
   readonly stopPropagation: boolean;
   readonly typeMask: number;
 }
 
+function wheelDirection(event: WheelEvent): number {
+  const { deltaX, deltaY } = event;
+  if (Math.abs(deltaY) >= Math.abs(deltaX)) {
+    return deltaY < 0 ? MouseButton.WheelUp : deltaY > 0 ? MouseButton.WheelDown : 0;
+  }
+  return deltaX < 0 ? MouseButton.WheelLeft : MouseButton.WheelRight;
+}
+
 /**
- * Dispatches pointer events against `KeyMod | MouseButton` encodings with an
- * optional pointer-type filter (`mouse` / `pen` / `touch`).
+ * Create a pointer/mouse dispatcher on `target` matching
+ * `KeyMod | MouseButton` encodings, with an optional pointer-type filter.
+ *
+ * DOM listeners are attached lazily per event kind (an app that only binds
+ * `click` never installs a `move` listener) and removed when the last
+ * binding of that kind is unsubscribed. Wheel listeners are non-passive so
+ * bindings can `preventDefault`.
  *
  * For `move`/`enter`/`leave`/`cancel` events (where `button` is `-1`),
  * bindings registered on {@link MouseButton.Left} match regardless of which
  * buttons are held; use `when` with `event.buttons` for stricter filtering.
  */
-export class PointerBindingService implements IDisposable {
-  private readonly _target: EventTarget;
-  private readonly _isMac: boolean;
-  private readonly _capture: boolean;
-  private _isDisposed = false;
+export function pointerBindings(target: EventTarget, options: PointerBindingsOptions = {}): PointerBindings {
+  const isMac = options.isMac ?? detectIsMac();
+  const capture = options.capture ?? false;
 
-  private readonly _byKind = new Map<PointerEventKind, Map<number, PointerBinding[]>>();
-  private readonly _listeners = new Map<PointerEventKind, IDisposable>();
+  const byKind = new Map<PointerEventKind, Map<number, PointerBinding[]>>();
+  const listeners = new Map<PointerEventKind, () => void>();
 
-  constructor(target: EventTarget, options: PointerBindingServiceOptions = {}) {
-    this._target = target;
-    this._isMac = options.isMac ?? detectIsMac();
-    this._capture = options.capture ?? false;
-  }
-
-  add(
-    binding: number,
-    kind: PointerEventKind,
-    handler: PointerBindingHandler,
-    options: PointerBindingOptions = {}
-  ): IDisposable {
-    if (this._isDisposed) {
-      throw new Error('PointerBindingService has been disposed');
-    }
-    const parts = decodeKeybinding(binding, this._isMac);
-    if (parts === null || parts.length !== 1) {
-      throw new Error(`Invalid pointer binding: ${binding} (chords are not supported for pointer)`);
-    }
-    const part = parts[0]!;
-    const hash = chordHashFromParts(part.ctrlKey, part.shiftKey, part.altKey, part.metaKey, part.keyCode);
-
-    let map = this._byKind.get(kind);
-    if (map === undefined) {
-      map = new Map();
-      this._byKind.set(kind, map);
-    }
-    let list = map.get(hash);
-    if (list === undefined) {
-      list = [];
-      map.set(hash, list);
-    }
-    const record: PointerBinding = {
-      handler,
-      when: options.when,
-      preventDefault: options.preventDefault ?? false,
-      stopPropagation: options.stopPropagation ?? false,
-      typeMask: pointerTypeMask(options.pointerType),
-    };
-    list.push(record);
-    this._ensureListener(kind);
-
-    return toDisposable(() => {
-      const idx = list.indexOf(record);
-      if (idx >= 0) {
-        list.splice(idx, 1);
-      }
-      if (list.length === 0) {
-        map.delete(hash);
-      }
-      if (map.size === 0) {
-        this._byKind.delete(kind);
-        this._listeners.get(kind)?.dispose();
-        this._listeners.delete(kind);
-      }
-    });
-  }
-
-  dispose(): void {
-    this._isDisposed = true;
-    for (const listener of this._listeners.values()) {
-      listener.dispose();
-    }
-    this._listeners.clear();
-    this._byKind.clear();
-  }
-
-  private _ensureListener(kind: PointerEventKind): void {
-    if (this._listeners.has(kind)) {
-      return;
-    }
-    const domType = KIND_TO_DOM[kind] as keyof GlobalEventHandlersEventMap;
-    this._listeners.set(
-      kind,
-      addDisposableListener(this._target, domType, (e) => this._onEvent(kind, e as PointerEvent), {
-        capture: this._capture,
-      })
-    );
-  }
-
-  private _onEvent(kind: PointerEventKind, event: PointerEvent): void {
-    const map = this._byKind.get(kind);
+  const onEvent = (kind: PointerEventKind, event: MouseEvent): void => {
+    const map = byKind.get(kind);
     if (map === undefined) {
       return;
     }
-    // pointermove/enter/leave/cancel report button === -1; treat them as
-    // Left so a single binding covers hover/drag flows.
-    const code = event.button >= 0 ? event.button + 1 : MouseButton.Left;
+    const code =
+      kind === 'wheel'
+        ? wheelDirection(event as WheelEvent)
+        : event.button >= 0
+          ? event.button + 1
+          : MouseButton.Left;
+    if (code === 0) {
+      return;
+    }
     const hash = chordHashFromParts(event.ctrlKey, event.shiftKey, event.altKey, event.metaKey, code);
     const bindings = map.get(hash);
     if (bindings === undefined) {
       return;
     }
-    const typeMask = eventPointerTypeMask(event.pointerType);
-    // See KeybindingService._dispatch for why the index only advances when
-    // the slot is stable (handlers may dispose bindings mid-dispatch).
+    // Events without a pointerType (wheel, click in older engines) match all
+    // filters rather than none.
+    const pt = (event as PointerEvent).pointerType;
+    const eventMask = pt === 'mouse' ? 1 : pt === 'pen' ? 2 : pt === 'touch' ? 4 : TYPE_ALL;
+    // Index only advances while the slot is stable (handlers may unsubscribe
+    // bindings mid-dispatch); see keybindings() dispatch for rationale.
     for (let i = 0; i < bindings.length; ) {
       const binding = bindings[i]!;
-      if ((binding.typeMask & typeMask) === 0 || (binding.when !== undefined && !binding.when())) {
+      if ((binding.typeMask & eventMask) === 0 || (binding.when !== undefined && !binding.when())) {
         i++;
         continue;
       }
@@ -202,5 +190,73 @@ export class PointerBindingService implements IDisposable {
         i++;
       }
     }
-  }
+  };
+
+  const ensureListener = (kind: PointerEventKind): void => {
+    if (listeners.has(kind)) {
+      return;
+    }
+    const domType = KIND_TO_DOM[kind];
+    const handler = (e: Event): void => onEvent(kind, e as MouseEvent);
+    const opts: AddEventListenerOptions =
+      kind === 'wheel' ? { capture, passive: false } : { capture };
+    target.addEventListener(domType, handler, opts);
+    listeners.set(kind, () => target.removeEventListener(domType, handler, opts));
+  };
+
+  return {
+    add(binding, kind, handler, opts = {}) {
+      const parts = decodeKeybinding(binding, isMac);
+      if (parts === null || parts.length !== 1) {
+        return () => {};
+      }
+      const part = parts[0]!;
+      const hash = chordHashFromParts(part.ctrlKey, part.shiftKey, part.altKey, part.metaKey, part.keyCode);
+
+      let map = byKind.get(kind);
+      if (map === undefined) {
+        map = new Map();
+        byKind.set(kind, map);
+      }
+      let list = map.get(hash);
+      if (list === undefined) {
+        list = [];
+        map.set(hash, list);
+      }
+      const record: PointerBinding = {
+        handler: handler as (event: Event) => void,
+        when: opts.when,
+        preventDefault: opts.preventDefault ?? false,
+        stopPropagation: opts.stopPropagation ?? false,
+        typeMask: typeMaskOf(opts.pointerType),
+      };
+      list.push(record);
+      ensureListener(kind);
+
+      return () => {
+        const idx = list.indexOf(record);
+        if (idx >= 0) {
+          list.splice(idx, 1);
+        }
+        if (list.length === 0) {
+          map.delete(hash);
+        }
+        if (map.size === 0) {
+          byKind.delete(kind);
+          const off = listeners.get(kind);
+          if (off !== undefined) {
+            off();
+            listeners.delete(kind);
+          }
+        }
+      };
+    },
+    dispose() {
+      for (const off of listeners.values()) {
+        off();
+      }
+      listeners.clear();
+      byKind.clear();
+    },
+  };
 }

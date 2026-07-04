@@ -1,4 +1,4 @@
-import { KeyCode, KeyCodeUtils } from './keyCodes.js';
+import { KeyCode } from './keyCodes.js';
 
 /**
  * Binary encoding of a single keybinding part, identical to Monaco's layout:
@@ -84,8 +84,8 @@ export function decodeKeybinding(keybinding: number, isMac: boolean): ResolvedCh
 }
 
 /**
- * A canonical, platform-independent string for a resolved chord, used as a
- * lookup key when matching events against registered bindings.
+ * A canonical integer for a resolved chord, used as the lookup key when
+ * matching events against registered bindings.
  */
 export function chordHashFromParts(
   ctrlKey: boolean,
@@ -105,98 +105,4 @@ export function chordHashFromParts(
 
 export function chordHash(chord: ResolvedChord): number {
   return chordHashFromParts(chord.ctrlKey, chord.shiftKey, chord.altKey, chord.metaKey, chord.keyCode);
-}
-
-const MOD_PARSE: Record<string, keyof typeof KeyMod> = {
-  ctrl: 'CtrlCmd',
-  control: 'CtrlCmd',
-  ctrlcmd: 'CtrlCmd',
-  mod: 'CtrlCmd',
-  cmd: 'CtrlCmd',
-  command: 'CtrlCmd',
-  meta: 'CtrlCmd',
-  shift: 'Shift',
-  alt: 'Alt',
-  option: 'Alt',
-  opt: 'Alt',
-  winctrl: 'WinCtrl',
-  win: 'WinCtrl',
-  super: 'WinCtrl',
-};
-
-function parsePart(part: string): number {
-  let mods = 0;
-  const pieces = part.split('+');
-  const last = pieces[pieces.length - 1];
-  if (last === undefined || last.length === 0) {
-    throw new Error(`Invalid keybinding part: "${part}"`);
-  }
-  for (let i = 0; i < pieces.length - 1; i++) {
-    const mod = MOD_PARSE[pieces[i]!.trim().toLowerCase()];
-    if (mod === undefined) {
-      throw new Error(`Unknown modifier "${pieces[i]}" in keybinding part "${part}"`);
-    }
-    mods |= KeyMod[mod];
-  }
-  const keyCode = KeyCodeUtils.fromString(last.trim());
-  if (keyCode === KeyCode.Unknown) {
-    throw new Error(`Unknown key "${last}" in keybinding part "${part}"`);
-  }
-  return mods | keyCode;
-}
-
-/**
- * Parse a human-readable keybinding such as `"Ctrl+K Ctrl+S"`,
- * `"CtrlCmd+Shift+P"` or `"Alt+F4"` into its binary encoding.
- *
- * `Ctrl`, `Cmd`, `Meta` and `Mod` all map to {@link KeyMod.CtrlCmd} so a
- * single string works across platforms; use `WinCtrl`/`Super` for the
- * secondary platform modifier.
- */
-export function parseKeybinding(keybinding: string): number {
-  const parts = keybinding.trim().split(/\s+/);
-  if (parts.length === 0 || parts.length > 2 || parts[0] === undefined || parts[0] === '') {
-    throw new Error(`Invalid keybinding: "${keybinding}" (expected 1 or 2 chord parts)`);
-  }
-  const first = parsePart(parts[0]);
-  if (parts.length === 2 && parts[1] !== undefined) {
-    return KeyChord(first, parsePart(parts[1]));
-  }
-  return first;
-}
-
-export interface FormatOptions {
-  /** Use macOS symbols/labels (`⌘`, `⇧`, `⌥`, `⌃`). Defaults to `false`. */
-  readonly isMac?: boolean;
-}
-
-function formatResolvedPart(chord: ResolvedChord, isMac: boolean): string {
-  const result: string[] = [];
-  if (isMac) {
-    if (chord.ctrlKey) result.push('⌃');
-    if (chord.altKey) result.push('⌥');
-    if (chord.shiftKey) result.push('⇧');
-    if (chord.metaKey) result.push('⌘');
-    result.push(KeyCodeUtils.toString(chord.keyCode));
-    return result.join('');
-  }
-  if (chord.ctrlKey) result.push('Ctrl');
-  if (chord.shiftKey) result.push('Shift');
-  if (chord.altKey) result.push('Alt');
-  if (chord.metaKey) result.push('Win');
-  result.push(KeyCodeUtils.toString(chord.keyCode));
-  return result.join('+');
-}
-
-/**
- * Render an encoded keybinding as a user-facing label, e.g.
- * `"Ctrl+K Ctrl+S"` or `"⌘K ⌘S"` on macOS.
- */
-export function formatKeybinding(keybinding: number, options: FormatOptions = {}): string {
-  const isMac = options.isMac ?? false;
-  const parts = decodeKeybinding(keybinding, isMac);
-  if (parts === null) {
-    return '';
-  }
-  return parts.map((part) => formatResolvedPart(part, isMac)).join(' ');
 }

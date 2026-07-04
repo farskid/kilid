@@ -1,6 +1,5 @@
-import { KeybindingService } from '../keyboard.js';
-import { MouseBindingService } from '../mouse.js';
-import { PointerBindingService } from '../pointer.js';
+import { chordKeybindings, type ChordKeybindings } from '../chords.js';
+import { pointerBindings, type PointerBindings } from '../pointer.js';
 
 /**
  * Refcounted, per-target service sharing.
@@ -45,12 +44,10 @@ class ServiceCache<T extends { dispose(): void }> {
   }
 }
 
-export const keyboardServices = new ServiceCache<KeybindingService>(
-  (target) => new KeybindingService(target)
+// The adapter uses the chord-capable superset: useKeybinding accepts chord
+// encodings/strings, and hooks importing the adapter already opt into the
+// convenience layer.
+export const keyboardServices = new ServiceCache<ChordKeybindings>((target) =>
+  chordKeybindings(target)
 );
-export const mouseServices = new ServiceCache<MouseBindingService>(
-  (target) => new MouseBindingService(target)
-);
-export const pointerServices = new ServiceCache<PointerBindingService>(
-  (target) => new PointerBindingService(target)
-);
+export const pointerServices = new ServiceCache<PointerBindings>((target) => pointerBindings(target));
