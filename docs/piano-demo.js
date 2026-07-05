@@ -1,10 +1,4 @@
-import {
-  KeyChord,
-  KeyCode,
-  MouseButton,
-  chordKeybindings,
-  pointerBindings,
-} from 'https://esm.sh/@farskid/kilid@0.1.0';
+import { KeyCode, MouseButton, pointerBindings } from 'https://esm.sh/@farskid/kilid@0.1.0';
 
 /** One octave starting at C4. */
 const PIANO = [
@@ -22,7 +16,7 @@ const PIANO = [
   { note: 'B', pc: 11, type: 'white', freq: 493.88, code: KeyCode.KeyJ, label: 'J' },
 ];
 
-/** Pitch-class sets for simultaneous hold → chord name. */
+/** Selected pitch classes → chord name (demo lookup table). */
 const CHORDS = [
   { name: 'C', pcs: [0, 4, 7] },
   { name: 'Cm', pcs: [0, 3, 7] },
@@ -36,19 +30,20 @@ const CHORDS = [
   { name: 'G7', pcs: [7, 11, 2, 5] },
 ];
 
-const NOTE_BY_PC = Object.fromEntries(PIANO.map((k) => [k.pc, k.note]));
 const BY_EVENT_CODE = Object.fromEntries(PIANO.map((k) => ['Key' + k.label, k]));
 
+const demoEl = document.getElementById('piano-demo');
 const pianoEl = document.getElementById('piano');
 const chordEl = document.getElementById('piano-chord');
 const notesEl = document.getElementById('piano-notes');
 const countEl = document.getElementById('piano-binding-count');
-const hintEl = document.getElementById('demo-hint');
+const clearEl = document.getElementById('piano-clear');
 
 if (!pianoEl || !chordEl || !notesEl) {
   throw new Error('Piano demo markup missing');
 }
 
+const TOGGLE_MODE = window.matchMedia('(pointer: coarse)').matches;
 const active = new Map();
 const heldKeys = new Set();
 let bindingCount = 0;
@@ -61,12 +56,8 @@ function sigFromPcs(pcs) {
 const CHORD_BY_SIG = Object.fromEntries(CHORDS.map((c) => [sigFromPcs(c.pcs), c.name]));
 
 function ensureAudio() {
-  if (!audioCtx) {
-    audioCtx = new AudioContext();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (!audioCtx) audioCtx = new AudioContext();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
@@ -77,69 +68,69 @@ function playTone(freq) {
   osc.type = 'triangle';
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
+  gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
   osc.connect(gain);
   gain.connect(ctx.destination);
   osc.start();
-  osc.stop(ctx.currentTime + 0.5);
-  return osc;
+  osc.stop(ctx.currentTime + 0.4);
 }
 
-function updateDisplay(matchedChord) {
+function updateDisplay() {
   const names = [...active.values()].map((k) => k.note);
-  notesEl.textContent = names.length ? names.join(' \u00b7 ') : '\u2014';
-  if (matchedChord) {
-    chordEl.textContent = matchedChord;
-    chordEl.dataset.state = 'match';
-  } else if (names.length) {
-    chordEl.textContent = names.length >= 2 ? '\u2026' : names[0];
-    chordEl.dataset.state = 'partial';
-  } else {
-    chordEl.textContent = 'play a chord';
+  notesEl.textContent = names.length ? names.join(' + ') : '\u2014';
+
+  if (clearEl) clearEl.hidden = names.length === 0;
+
+  if (names.length === 0) {
+    chordEl.textContent = 'select notes';
     chordEl.dataset.state = 'idle';
+    return;
   }
-}
 
-function matchHeldChord() {
-  if (active.size === 0) {
-    updateDisplay(null);
-    return null;
-  }
   const sig = sigFromPcs([...active.keys()]);
-  const name = CHORD_BY_SIG[sig] ?? null;
-  updateDisplay(name);
-  return name;
+  const match = CHORD_BY_SIG[sig];
+  if (match) {
+    chordEl.textContent = match;
+    chordEl.dataset.state = 'match';
+    return;
+  }
+
+  chordEl.dataset.state = 'partial';
+  if (names.length === 1) {
+    chordEl.textContent = 'add more notes';
+  } else {
+    chordEl.textContent = 'no chord match';
+  }
 }
 
-function pressKey(key, pointerId) {
+function latchKey(key) {
   if (active.has(key.pc)) return;
   active.set(key.pc, key);
-  key.el.classList.add('down');
-  key.osc = playTone(key.freq);
-  if (pointerId !== undefined) {
-    try {
-      key.el.setPointerCapture(pointerId);
-    } catch {
-      /* ignore */
-    }
-  }
-  matchHeldChord();
+  key.el.classList.add('down', 'latched');
+  playTone(key.freq);
+  updateDisplay();
 }
 
-function releaseKey(key) {
+function unlatchKey(key) {
   if (!active.has(key.pc)) return;
   active.delete(key.pc);
-  key.el.classList.remove('down');
-  if (key.osc) {
-    try {
-      key.osc.stop();
-    } catch {
-      /* already stopped */
-    }
-    key.osc = undefined;
-  }
-  matchHeldChord();
+  key.el.classList.remove('down', 'latched');
+  updateDisplay();
+}
+
+function toggleKey(key) {
+  if (active.has(key.pc)) unlatchKey(key);
+  else latchKey(key);
+}
+
+function clearAll() {
+  [...active.values()].forEach((key) => {
+    key.el.classList.remove('down', 'latched');
+  });
+  active.clear();
+  heldKeys.clear();
+  updateDisplay();
 }
 
 function buildPiano() {
@@ -152,25 +143,22 @@ function buildPiano() {
     const el = document.createElement('button');
     el.type = 'button';
     el.className = 'piano-key white';
-    el.dataset.note = key.note;
+    el.setAttribute('aria-label', key.note);
     el.innerHTML =
-      '<span class="note">' + key.note + '</span><span class="kbd">' + key.label + '</span>';
+      '<span class="note" aria-hidden="true">' + key.note + '</span>' +
+      '<span class="kbd" aria-hidden="true">' + key.label + '</span>';
     key.el = el;
     whiteWrap.appendChild(el);
   });
 
-  PIANO.filter((k) => k.type === 'black').forEach((key, i) => {
+  PIANO.filter((k) => k.type === 'black').forEach((key) => {
     const el = document.createElement('button');
     el.type = 'button';
     el.className = 'piano-key black';
-    el.style.setProperty('--i', String(i));
-    el.dataset.note = key.note;
+    el.setAttribute('aria-label', key.note);
     el.innerHTML =
-      '<span class="note">' +
-      key.note.replace('#', '\u266f') +
-      '</span><span class="kbd">' +
-      key.label +
-      '</span>';
+      '<span class="note" aria-hidden="true">' + key.note.replace('#', '\u266f') + '</span>' +
+      '<span class="kbd" aria-hidden="true">' + key.label + '</span>';
     key.el = el;
     blackWrap.appendChild(el);
   });
@@ -182,84 +170,106 @@ function buildPiano() {
 function registerPointerBindings() {
   PIANO.forEach((key) => {
     const pointer = pointerBindings(key.el);
+
+    if (TOGGLE_MODE) {
+      pointer.add(
+        MouseButton.Left,
+        'down',
+        (e) => {
+          e.preventDefault();
+          toggleKey(key);
+        },
+        { preventDefault: true }
+      );
+      bindingCount += 1;
+      return;
+    }
+
     pointer.add(
       MouseButton.Left,
       'down',
       (e) => {
-        pressKey(key, e.pointerId);
+        e.preventDefault();
+        if (!active.has(key.pc)) {
+          latchKey(key);
+          try {
+            key.el.setPointerCapture(e.pointerId);
+          } catch {
+            /* ignore */
+          }
+        }
       },
       { preventDefault: true }
     );
     bindingCount += 1;
-    pointer.add(MouseButton.Left, 'up', () => releaseKey(key), { preventDefault: true });
+
+    pointer.add(
+      MouseButton.Left,
+      'up',
+      () => {
+        if (active.has(key.pc)) unlatchKey(key);
+      },
+      { preventDefault: true }
+    );
     bindingCount += 1;
+
     pointer.add(MouseButton.Left, 'leave', (e) => {
-      if (e.buttons & 1) releaseKey(key);
+      if ((e.buttons & 1) && active.has(key.pc)) unlatchKey(key);
     });
     bindingCount += 1;
   });
-}
-
-/** Two-note sequences → chord names via chordKeybindings (kilid chord API). */
-function registerChordBindings() {
-  pianoEl.tabIndex = 0;
-  pianoEl.addEventListener('pointerdown', () => pianoEl.focus());
-
-  const seq = chordKeybindings(pianoEl, { chordTimeout: 900 });
-  let registered = 0;
-
-  CHORDS.forEach((chord) => {
-    const a = PIANO.find((k) => k.pc === chord.pcs[0]);
-    const b = PIANO.find((k) => k.pc === chord.pcs[1]);
-    if (!a || !b) return;
-    seq.add(KeyChord(a.code, b.code), () => {
-      chordEl.textContent = chord.name + ' (arpeggio)';
-      chordEl.dataset.state = 'match';
-      notesEl.textContent = chord.pcs.map((pc) => NOTE_BY_PC[pc]).join(' \u2192 ');
-    });
-    registered += 1;
-  });
-
-  bindingCount += registered;
-  return registered;
 }
 
 function registerKeyboard() {
+  if (TOGGLE_MODE) return;
+
+  pianoEl.tabIndex = -1;
+  pianoEl.addEventListener('pointerdown', () => pianoEl.focus({ preventScroll: true }));
+
   pianoEl.addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const key = BY_EVENT_CODE[e.code];
     if (!key || e.repeat || heldKeys.has(key.pc)) return;
     e.preventDefault();
     heldKeys.add(key.pc);
-    pressKey(key);
+    latchKey(key);
   });
   pianoEl.addEventListener('keyup', (e) => {
     const key = BY_EVENT_CODE[e.code];
     if (!key) return;
     e.preventDefault();
     heldKeys.delete(key.pc);
-    releaseKey(key);
+    unlatchKey(key);
+  });
+}
+
+if (demoEl) {
+  demoEl.addEventListener(
+    'touchstart',
+    (e) => {
+      if (e.target.closest('.piano-key')) e.preventDefault();
+    },
+    { passive: false }
+  );
+}
+
+if (clearEl) {
+  clearEl.hidden = false;
+  clearEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    clearAll();
   });
 }
 
 buildPiano();
 registerPointerBindings();
-const arpeggioBindings = registerChordBindings();
 registerKeyboard();
 
 if (countEl) {
   countEl.textContent =
     bindingCount +
-    ' kilid bindings (' +
-    PIANO.length * 3 +
-    ' pointer on keys + ' +
-    arpeggioBindings +
-    ' chord sequences)';
+    ' pointerBindings on piano keys' +
+    (TOGGLE_MODE ? ' (tap toggles)' : ' (hold to play)');
 }
 
-const coarse = window.matchMedia('(pointer: coarse)').matches;
-if (hintEl) {
-  hintEl.textContent = coarse
-    ? 'Hold keys to name a chord — each key uses pointerBindings'
-    : 'Hold keys for a chord, or play two letters in a row for chordKeybindings';
-}
+updateDisplay();

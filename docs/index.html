@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>kilid — fast, tiny keyboard, mouse and pointer bindings for TypeScript</title>
 <meta name="description" content="Zero-dependency TypeScript keyboard, mouse and pointer event bindings. 1.6 KB gzipped core, zero-allocation dispatch, opt-in chords, tree-shakeable React adapter." />
 <meta name="color-scheme" content="light dark" />
@@ -93,12 +93,13 @@
     }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; overflow-x: clip; }
   body {
     background: var(--bg);
     color: var(--text);
     font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
   }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
@@ -168,41 +169,56 @@
   .btn.ghost:hover { border-color: var(--accent); text-decoration: none; }
 
   .demo {
-    margin: 56px auto 0; max-width: 640px; background: var(--bg-card);
-    border: 1px solid var(--border); border-radius: 12px; padding: 26px 20px; text-align: center;
+    margin: 56px auto 0; max-width: 640px; width: 100%; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 12px; padding: 26px 16px; text-align: center;
+    overflow: hidden; touch-action: manipulation;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   }
   .demo p { color: var(--text-dim); font-size: 14px; margin: 0; }
+  .demo-help { margin-top: 10px !important; font-size: 13px !important; line-height: 1.5; }
+  .demo-help strong { color: var(--text); font-weight: 600; }
   .demo-caption { margin-top: 12px !important; font-size: 12px !important; font-family: var(--mono); }
-  .piano-readout { margin: 16px 0 10px; }
+  .demo-clear {
+    margin-top: 10px; appearance: none; border: 1px solid var(--border); background: var(--bg-soft);
+    color: var(--text-dim); border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .demo-clear:hover { border-color: var(--accent); color: var(--text); }
+  .piano-readout { margin: 14px 0 8px; }
   .piano-chord {
-    font-family: var(--mono); font-size: clamp(28px, 6vw, 36px); font-weight: 700;
+    font-family: var(--mono); font-size: clamp(24px, 5.5vw, 36px); font-weight: 700;
     color: var(--accent); letter-spacing: .02em; min-height: 1.2em;
   }
-  .piano-chord[data-state="idle"] { color: var(--code-cm); font-size: 18px; font-weight: 500; }
-  .piano-chord[data-state="partial"] { color: var(--accent-3); }
+  .piano-chord[data-state="idle"] { color: var(--code-cm); font-size: 17px; font-weight: 500; }
+  .piano-chord[data-state="partial"] { color: var(--accent-3); font-size: clamp(18px, 4.5vw, 28px); }
   .piano-notes {
-    margin-top: 6px; font-family: var(--mono); font-size: 14px; color: var(--text-dim);
-    min-height: 1.4em;
+    margin-top: 6px; font-family: var(--mono); font-size: 13px; color: var(--text-dim);
+    min-height: 1.4em; word-break: break-word;
   }
+  .piano-wrap { width: 100%; overflow: hidden; margin: 0 auto; }
   .piano {
-    position: relative; margin: 0 auto; max-width: 520px; padding: 0 4px;
-    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+    position: relative; width: 100%; max-width: 100%; margin: 0 auto;
+    touch-action: manipulation; -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
   }
-  .piano-whites { display: flex; gap: 2px; }
+  .piano:focus { outline: none; }
+  .piano-whites { display: flex; gap: 1px; width: 100%; min-width: 0; }
   .piano-blacks {
-    position: absolute; top: 0; left: 4px; right: 4px; height: 0; pointer-events: none;
+    position: absolute; top: 0; left: 0; right: 0; height: 0; pointer-events: none;
   }
   .piano-key {
     appearance: none; border: none; cursor: pointer; position: relative;
-    border-radius: 0 0 6px 6px; padding: 0;
+    border-radius: 0 0 5px 5px; padding: 0; margin: 0;
     touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
     transition: background .08s, transform .08s;
   }
   .piano-key.white {
-    flex: 1; height: clamp(120px, 28vw, 152px);
+    flex: 1 1 0; min-width: 0; width: 0;
+    height: clamp(100px, 24vw, 140px);
     background: linear-gradient(180deg, #f8f9fc 0%, #e8ebf2 100%);
     border: 1px solid var(--border); border-top: none;
-    box-shadow: inset 0 -4px 0 rgba(0,0,0,.06);
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,.06);
     color: #5c6478;
   }
   [data-theme="dark"] .piano-key.white,
@@ -212,29 +228,30 @@
   }
   .piano-key.black {
     pointer-events: auto;
-    width: 9.5%; height: clamp(72px, 17vw, 92px);
+    width: 7.5%; height: clamp(58px, 14vw, 84px);
     background: linear-gradient(180deg, #3a4150 0%, #1a1d26 100%);
     border: 1px solid #0b0e14; border-top: none;
-    box-shadow: 0 4px 8px rgba(0,0,0,.35);
+    box-shadow: 0 3px 6px rgba(0,0,0,.35);
     color: #cdd3df; z-index: 2;
   }
-  .piano-key.black:nth-child(1) { left: 9.5%; }
-  .piano-key.black:nth-child(2) { left: 23.5%; }
-  .piano-key.black:nth-child(3) { left: 51%; }
+  .piano-key.black:nth-child(1) { left: 10.5%; }
+  .piano-key.black:nth-child(2) { left: 24%; }
+  .piano-key.black:nth-child(3) { left: 51.5%; }
   .piano-key.black:nth-child(4) { left: 65%; }
-  .piano-key.black:nth-child(5) { left: 79%; }
+  .piano-key.black:nth-child(5) { left: 78.5%; }
   .piano-key .note {
-    position: absolute; bottom: 8px; left: 0; right: 0;
-    font-family: var(--mono); font-size: 11px; opacity: .75;
+    position: absolute; bottom: 6px; left: 0; right: 0;
+    font-family: var(--mono); font-size: 10px; opacity: .75; pointer-events: none;
   }
   .piano-key .kbd {
-    position: absolute; top: 8px; left: 0; right: 0;
-    font-family: var(--mono); font-size: 10px; opacity: .45;
+    position: absolute; top: 6px; left: 0; right: 0;
+    font-family: var(--mono); font-size: 9px; opacity: .45; pointer-events: none;
   }
-  .piano-key.black .note { bottom: 6px; font-size: 10px; }
-  .piano-key.down { transform: translateY(2px); filter: brightness(1.08); }
+  .piano-key.black .note { bottom: 4px; font-size: 9px; }
+  .piano-key.down { transform: translateY(1px); filter: brightness(1.08); }
   .piano-key.white.down { background: linear-gradient(180deg, #dfe6ff 0%, #c8d4f5 100%); }
   .piano-key.black.down { background: linear-gradient(180deg, #565f89 0%, #3a4150 100%); }
+  .piano-key.latched.down { box-shadow: inset 0 0 0 2px var(--accent); }
 
   section { padding: 64px 0 8px; }
   section h2 {
@@ -334,10 +351,12 @@
     }
     .btn { text-align: center; width: 100%; }
 
-    .demo { margin-top: 32px; padding: 18px 14px; }
-    .piano-key.white { height: 118px; }
-    .piano-key.black { height: 70px; }
+    .demo { margin-top: 32px; padding: 16px 12px; }
+    .demo-help { font-size: 12px !important; }
+    .piano-key.white { height: 100px; }
+    .piano-key.black { height: 58px; width: 8%; }
     .piano-key .kbd { display: none; }
+    .piano-key .note { font-size: 9px; }
 
     section { padding: 40px 0 4px; }
     section h2 { font-size: 22px; scroll-margin-top: 72px; }
@@ -407,13 +426,19 @@
       <a class="btn ghost" href="https://github.com/farskid/kilid">Star on GitHub</a>
     </div>
 
-    <div class="demo">
-      <p id="demo-hint">Hold keys to name a chord — each key uses pointerBindings</p>
+    <div class="demo" id="piano-demo">
+      <p id="demo-hint">Live demo — powered by <code>pointerBindings</code></p>
+      <p class="demo-help">
+        Each key runs <code>pointerBindings(key).add(MouseButton.Left, 'down', …)</code>.
+        <strong>Tap keys to toggle notes on/off</strong> (mobile) or hold them (desktop).
+        When the selected notes match a chord, the name appears — try <strong>C + E + G → C</strong>.
+      </p>
       <div class="piano-readout">
-        <div class="piano-chord" id="piano-chord" data-state="idle">play a chord</div>
+        <div class="piano-chord" id="piano-chord" data-state="idle">select notes</div>
         <div class="piano-notes" id="piano-notes">&mdash;</div>
       </div>
-      <div class="piano" id="piano" aria-label="Interactive piano demo"></div>
+      <div class="piano-wrap"><div class="piano" id="piano" aria-label="Interactive piano demo"></div></div>
+      <button type="button" class="demo-clear" id="piano-clear" hidden>Clear notes</button>
       <p class="demo-caption" id="piano-binding-count">loading kilid bindings…</p>
     </div>
   </div>
