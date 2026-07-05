@@ -321,6 +321,7 @@
     <nav id="site-nav">
       <a href="#quick-start">Quick start</a>
       <a href="#api">API</a>
+      <a href="#recipes">Recipes</a>
       <a href="#react">React</a>
       <a href="#performance">Performance</a>
       <a href="https://github.com/farskid/kilid">GitHub</a>
@@ -510,6 +511,77 @@ formatKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, { isMac: true }); // "⌘S"</cod
       <code>keyCodeToString</code>, <code>keyCodeFromString</code> (accepts aliases like
       <code>Esc</code>).
     </p>
+  </div>
+</section>
+
+<section id="recipes">
+  <div class="wrap">
+    <h2>Recipes</h2>
+    <p class="lede">
+      Common patterns that aren't separate API options — capture is a factory flag,
+      one-shot bindings are a few lines of glue, and delegation is native DOM bubbling
+      on whatever <code>EventTarget</code> you pass.
+    </p>
+
+    <h3>Capture phase</h3>
+    <p>
+      Pass <code>capture: true</code> when creating the service. It applies to the whole
+      dispatcher's DOM listener (all bindings on that instance), not per-binding.
+      <code>keybindings</code>, <code>chordKeybindings</code>, and
+      <code>pointerBindings</code> all accept it. The React adapter does not expose it
+      today — services are shared with <code>capture: false</code>.
+    </p>
+    <pre><code>import { KeyMod, KeyCode, MouseButton, keybindings, pointerBindings } from 'kilid';
+
+// Intercept before targets deeper in the tree (e.g. stop browser shortcuts early)
+const keys = keybindings(document, { capture: true });
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, save);
+
+const list = document.getElementById('list')!;
+const pointer = pointerBindings(list, { capture: true });
+pointer.add(MouseButton.Left, 'click', onRowClick);</code></pre>
+
+    <h3>One-shot binding</h3>
+    <p>
+      There is no <code>{ once: true }</code> option — call the unsubscribe function
+      returned by <code>add()</code> inside the handler when you only want one fire.
+    </p>
+    <pre><code>const keys = keybindings(window);
+
+const off = keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, (e) =&gt; {
+  off(); // unregister before running — safe even if save throws
+  save(e);
+});
+
+// same idea for pointer
+const pointer = pointerBindings(element);
+const offClick = pointer.add(MouseButton.Left, 'click', (e) =&gt; {
+  offClick();
+  confirmOnce(e);
+});</code></pre>
+
+    <h3>Event delegation (bubbling)</h3>
+    <p>
+      Attach to a parent; bubbling events from children reach the listener. There is no
+      built-in selector API — filter with <code>event.target</code> or
+      <code>Element.closest()</code> in the handler (or a <code>when</code> guard).
+      <code>pointerenter</code>/<code>pointerleave</code> do <em>not</em> bubble; bind
+      those on the element you care about. Keyboard events don't delegate in the DOM
+      sense — attach to <code>window</code> or the focused element.
+    </p>
+    <pre><code>const list = document.getElementById('list')!;
+const pointer = pointerBindings(list);
+
+pointer.add(MouseButton.Left, 'click', (e) =&gt; {
+  const row = (e.target as Element).closest('[data-id]');
+  if (!row) return;
+  select(row.getAttribute('data-id'));
+});
+
+// optional: keep the hot path lean with when (runs before the handler)
+pointer.add(MouseButton.Left, 'click', (e) =&gt; selectFrom(e), {
+  when: () =&gt; (document.activeElement as Element | null)?.closest?.('#list') !== null,
+});</code></pre>
   </div>
 </section>
 
