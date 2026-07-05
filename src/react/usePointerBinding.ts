@@ -1,5 +1,10 @@
 import { useEffect } from 'react';
-import type { PointerBindingHandler, PointerEventKind, PointerType } from '../pointer.js';
+import type {
+  PointerBindingHandler,
+  PointerButtonlessKind,
+  PointerEventKind,
+  PointerType,
+} from '../pointer.js';
 import { pointerServices } from './pointerServiceCache.js';
 import {
   pointerServiceOptions,
@@ -15,19 +20,39 @@ import {
  * usePointerBinding(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection, {
  *   target: listRef,
  * });
- * usePointerBinding(MouseButton.Left, 'move', onDraw, {
+ * // Buttonless kinds need no binding:
+ * usePointerBinding('move', onDraw, {
  *   target: canvasRef,
  *   pointerType: ['pen', 'touch'],
- *   capture: true,
  * });
+ * // Or modifier-only — move while Alt is held:
+ * usePointerBinding(KeyMod.Alt, 'move', onAltDraw, { target: canvasRef });
  * ```
  */
+export function usePointerBinding<K extends PointerButtonlessKind>(
+  kind: K,
+  handler: PointerBindingHandler<K>,
+  options?: UsePointerBindingOptions
+): void;
 export function usePointerBinding<K extends PointerEventKind>(
   binding: number,
   kind: K,
   handler: PointerBindingHandler<K>,
-  options: UsePointerBindingOptions = {}
+  options?: UsePointerBindingOptions
+): void;
+export function usePointerBinding<K extends PointerEventKind>(
+  bindingOrKind: number | PointerButtonlessKind,
+  kindOrHandler: K | PointerBindingHandler<K>,
+  handlerOrOptions?: PointerBindingHandler<K> | UsePointerBindingOptions,
+  maybeOptions?: UsePointerBindingOptions
 ): void {
+  const buttonless = typeof bindingOrKind === 'string';
+  const binding = buttonless ? 0 : bindingOrKind;
+  const kind = (buttonless ? bindingOrKind : kindOrHandler) as K;
+  const handler = (buttonless ? kindOrHandler : handlerOrOptions) as PointerBindingHandler<K>;
+  const options =
+    (buttonless ? (handlerOrOptions as UsePointerBindingOptions | undefined) : maybeOptions) ?? {};
+
   const handlerRef = useLatestRef(handler);
   const whenRef = useLatestRef(options.when);
   const { enabled = true, preventDefault, stopPropagation, capture, isMac } = options;

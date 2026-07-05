@@ -26,8 +26,10 @@ const outDir = resolve(scenariosDir, '.out');
 const SCENARIOS = [
   { file: 'core-keybindings.mjs', name: 'core: keybindings only (no chords)', budget: 3_500 },
   { file: 'core-chords.mjs', name: 'core: keybindings + chords', budget: 4_200 },
-  { file: 'core-keyboard-pointer.mjs', name: 'core: keyboard + pointer', budget: 5_500 },
-  { file: 'core-everything.mjs', name: 'core: everything (incl. parse/format)', budget: 8_300 },
+  // Pointer budgets raised for the buttonless-kind overload (arg
+  // normalization + legacy dual-hash dispatch), ~450 B minified.
+  { file: 'core-keyboard-pointer.mjs', name: 'core: keyboard + pointer', budget: 5_800 },
+  { file: 'core-everything.mjs', name: 'core: everything (incl. parse/format)', budget: 8_700 },
   {
     file: 'react-keybinding-only.mjs',
     name: 'react: useKeybinding only (react external)',
@@ -49,19 +51,19 @@ const SCENARIOS = [
   {
     file: 'react-pointer-only.mjs',
     name: 'react: usePointerBinding only (react external)',
-    budget: 5_200,
+    budget: 5_700,
     external: ['react'],
   },
   {
     file: 'react-keybinding-pointer.mjs',
     name: 'react: useKeybinding + usePointerBinding (react external)',
-    budget: 7_200,
+    budget: 7_800,
     external: ['react'],
   },
   {
     file: 'react-all-hooks.mjs',
     name: 'react: all hooks (react external)',
-    budget: 9_400,
+    budget: 9_900,
     external: ['react'],
   },
 ];

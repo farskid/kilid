@@ -92,11 +92,15 @@ pointer.add(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection);
 pointer.add(MouseButton.Middle, 'down', startPan);
 pointer.add(KeyMod.CtrlCmd | MouseButton.WheelUp, 'wheel', zoomIn, { preventDefault: true });
 
-// pen/touch filters
-pointer.add(MouseButton.Left, 'move', onDraw, { pointerType: ['pen', 'touch'] });
+// Buttonless kinds (move/enter/leave/cancel) take no button — with pen/touch filters
+pointer.add('move', onDraw, { pointerType: ['pen', 'touch'] });
+
+// Modifier-only encoding: move while Alt (or Cmd+Alt) is held
+pointer.add(KeyMod.Alt, 'move', onAltDraw);
+pointer.add(KeyMod.CtrlCmd | KeyMod.Alt, 'move', onOrbit);
 ```
 
-For `move`/`enter`/`leave`/`cancel` (where `button` is `-1`), bindings on `MouseButton.Left` match regardless of held buttons — use `when` with `event.buttons` for stricter filtering.
+For `move`/`enter`/`leave`/`cancel` (where `button` is `-1`), use the buttonless overload `add('move', handler)` or a modifier-only encoding — button bits register nothing there (dev builds warn). Pointer events don't carry non-modifier key state, so "move while `K` is held" needs a `when` guard fed by your own keydown/keyup tracking. Use `when` with `event.buttons` to filter by held buttons.
 
 ### Encoding: `KeyMod`, `KeyCode`, `MouseButton`, `KeyChord`
 
