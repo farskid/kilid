@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/farskid/kilid/actions/workflows/ci.yml/badge.svg)](https://github.com/farskid/kilid/actions/workflows/ci.yml)
 
-Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API. Optional tree-shakeable React adapter via `kilid/react`.
+Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API. Optional tree-shakeable React adapter via `@farskid/kilid/react`.
 
 **[Landing page & docs →](https://farskid.github.io/kilid/)** (requires one-time Pages setup below)
 
@@ -28,13 +28,13 @@ After that, the site is served at `https://farskid.github.io/kilid/` on every pu
 ## Install
 
 ```bash
-npm install kilid
+npm install @farskid/kilid
 ```
 
 ## Keyboard
 
 ```ts
-import { KeyMod, KeyCode, keybindings } from 'kilid';
+import { KeyMod, KeyCode, keybindings } from '@farskid/kilid';
 
 const keys = keybindings(window); // or any HTMLElement
 
@@ -43,7 +43,7 @@ keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, (e) => save());
 
 // String bindings parse explicitly — the parser only ships to bundles
 // that import it, keeping the core lean.
-import { parseKeybinding } from 'kilid';
+import { parseKeybinding } from '@farskid/kilid';
 keys.add(parseKeybinding('Ctrl+Shift+P'), quickOpen);
 
 // Guards and event control
@@ -65,7 +65,7 @@ it. (Note: `Cmd+S` is a *single* binding with a modifier, not a chord — it
 works in the base `keybindings`.)
 
 ```ts
-import { KeyMod, KeyCode, KeyChord, chordKeybindings } from 'kilid';
+import { KeyMod, KeyCode, KeyChord, chordKeybindings } from '@farskid/kilid';
 
 const keys = chordKeybindings(window);
 
@@ -85,7 +85,7 @@ In strings, `Ctrl`, `Cmd`, `Meta` and `Mod` all map to `KeyMod.CtrlCmd` so one s
 ### Formatting / parsing
 
 ```ts
-import { formatKeybinding, parseKeybinding } from 'kilid';
+import { formatKeybinding, parseKeybinding } from '@farskid/kilid';
 
 formatKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS);                  // "Ctrl+S"
 formatKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, { isMac: true }); // "⌘S"
@@ -99,7 +99,7 @@ service for the whole pointing surface — the click family and wheel are just
 extra event kinds on it.
 
 ```ts
-import { KeyMod, MouseButton, pointerBindings } from 'kilid';
+import { KeyMod, MouseButton, pointerBindings } from '@farskid/kilid';
 
 const pointer = pointerBindings(element);
 
@@ -122,14 +122,14 @@ Event kinds: `'down' | 'up' | 'move' | 'enter' | 'leave' | 'cancel' | 'click' | 
 
 ## React
 
-The React adapter lives in a separate subpath export, `kilid/react`. It is a
+The React adapter lives in a separate subpath export, `@farskid/kilid/react`. It is a
 separate build entry with `react` as an optional peer dependency — if you never
 import it, no React-related code enters your bundle (verified with esbuild:
 a core-only bundle contains zero references to React).
 
 ```tsx
-import { KeyMod, KeyCode, MouseButton } from 'kilid';
-import { useKeybinding, usePointerBinding } from 'kilid/react';
+import { KeyMod, KeyCode, MouseButton } from '@farskid/kilid';
+import { useKeybinding, usePointerBinding } from '@farskid/kilid/react';
 
 function Editor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);

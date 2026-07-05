@@ -343,7 +343,7 @@
       <span class="badge"><b>~2.5M</b> dispatches/sec</span>
       <span class="badge">tree-shakeable</span>
     </div>
-    <div class="install"><span class="dollar">$</span> npm install kilid</div>
+    <div class="install"><span class="dollar">$</span> npm install @farskid/kilid</div>
     <div class="cta">
       <a class="btn primary" href="#quick-start">Get started</a>
       <a class="btn ghost" href="https://github.com/farskid/kilid">Star on GitHub</a>
@@ -391,7 +391,7 @@
 <section id="quick-start">
   <div class="wrap">
     <h2>Quick start</h2>
-    <pre><code>import { KeyMod, KeyCode, keybindings } from 'kilid';
+    <pre><code>import { KeyMod, KeyCode, keybindings } from '@farskid/kilid';
 
 const keys = keybindings(window);
 
@@ -413,7 +413,7 @@ keys.dispose(); // removes all bindings and the DOM listener</code></pre>
   <div class="wrap">
     <h2>API reference</h2>
     <p class="lede">
-      Everything ships from two entry points: <code>kilid</code> (core) and <code>kilid/react</code>
+      Everything ships from two entry points: <code>@farskid/kilid</code> (core) and <code>@farskid/kilid/react</code>
       (adapter). All factories return plain objects; all <code>add()</code> calls return an
       unsubscribe function. Invalid encodings register nothing — the core never throws;
       in development builds a <code>console.warn</code> explains why (stripped from
@@ -439,7 +439,7 @@ keys.dispose();</code></pre>
       the state machine. Note: <code>Cmd+S</code> is a single binding with a modifier, <em>not</em>
       a chord; chords are two sequential keypresses.
     </p>
-    <pre><code>import { KeyChord, chordKeybindings } from 'kilid';
+    <pre><code>import { KeyChord, chordKeybindings } from '@farskid/kilid';
 
 const keys = chordKeybindings(window);
 keys.add(
@@ -456,7 +456,7 @@ keys.isChordPending; // true between Ctrl+K and the second part</code></pre>
       <code>wheel</code>. DOM listeners attach lazily per kind and detach when the last binding of
       that kind unsubscribes. <code>preventDefault</code> defaults to <code>false</code> here.
     </p>
-    <pre><code>import { KeyMod, MouseButton, pointerBindings } from 'kilid';
+    <pre><code>import { KeyMod, MouseButton, pointerBindings } from '@farskid/kilid';
 
 const pointer = pointerBindings(element);
 
@@ -497,7 +497,7 @@ KeyChord(first, second)  // packs the second part into bits 16–31</code></pre>
       bundles that import it. The core <code>add()</code> is numeric-only by design — the parser is
       never pulled in behind your back.
     </p>
-    <pre><code>import { parseKeybinding, formatKeybinding } from 'kilid';
+    <pre><code>import { parseKeybinding, formatKeybinding } from '@farskid/kilid';
 
 keys.add(parseKeybinding('Ctrl+Shift+P'), quickOpen);
 keys.add(parseKeybinding('Ctrl+K Ctrl+S'), openShortcuts); // chordKeybindings only
@@ -532,7 +532,7 @@ formatKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, { isMac: true }); // "⌘S"</cod
       <code>capture</code> (service-level — hooks on the same target share a
       listener only when <code>capture</code> matches).
     </p>
-    <pre><code>import { KeyMod, KeyCode, MouseButton, keybindings, pointerBindings } from 'kilid';
+    <pre><code>import { KeyMod, KeyCode, MouseButton, keybindings, pointerBindings } from '@farskid/kilid';
 
 // Intercept before targets deeper in the tree (e.g. stop browser shortcuts early)
 const keys = keybindings(document, { capture: true });
@@ -590,11 +590,11 @@ pointer.add(MouseButton.Left, 'click', (e) =&gt; {
   <div class="wrap">
     <h2>React adapter</h2>
     <p class="lede">
-      <code>kilid/react</code> is a separate build entry with <code>react</code> as an optional
+      <code>@farskid/kilid/react</code> is a separate build entry with <code>react</code> as an optional
       peer dependency — if you never import it, no React-related code enters your bundle.
     </p>
-    <pre><code>import { KeyMod, KeyCode, MouseButton } from 'kilid';
-import { useKeybinding, usePointerBinding } from 'kilid/react';
+    <pre><code>import { KeyMod, KeyCode, MouseButton } from '@farskid/kilid';
+import { useKeybinding, usePointerBinding } from '@farskid/kilid/react';
 
 function Editor() {
   const canvasRef = useRef&lt;HTMLCanvasElement&gt;(null);
@@ -658,7 +658,7 @@ function Editor() {
 <footer>
   <div class="wrap">
     <div>MIT © kilid contributors</div>
-    <div><a href="https://github.com/farskid/kilid">GitHub</a> · <a href="https://www.npmjs.com/package/kilid">npm</a></div>
+    <div><a href="https://github.com/farskid/kilid">GitHub</a> · <a href="https://www.npmjs.com/package/@farskid/kilid">npm</a></div>
   </div>
 </footer>
 
