@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>kilid — fast, tiny keyboard, mouse and pointer bindings for TypeScript</title>
-<meta name="description" content="Zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API. 1.6 KB gzipped core, zero-allocation dispatch, opt-in chords, tree-shakeable React adapter." />
+<meta name="description" content="Zero-dependency TypeScript keyboard, mouse and pointer event bindings. 1.6 KB gzipped core, zero-allocation dispatch, opt-in chords, tree-shakeable React adapter." />
 <meta name="color-scheme" content="light dark" />
 <script>
 (function () {
@@ -175,7 +175,8 @@
   .demo .keys {
     margin-top: 14px; min-height: 64px; display: flex; align-items: center; justify-content: center;
     font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--accent);
-    letter-spacing: .04em;
+    letter-spacing: .04em; cursor: pointer; touch-action: manipulation; user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   .demo .keys.idle { color: var(--code-cm); font-size: 16px; font-weight: 400; }
 
@@ -247,17 +248,17 @@
 
     header.site .wrap {
       flex-wrap: wrap; align-items: center; height: auto;
-      padding: 10px 0; gap: 10px;
+      padding: 10px 16px; gap: 10px;
     }
     .nav-toggle { display: grid; place-items: center; }
     nav {
       display: none; order: 3; width: 100%; flex-direction: column;
       align-items: stretch; gap: 0; margin-left: 0;
-      padding: 6px 0 10px; border-top: 1px solid var(--border);
+      padding: 8px 16px 12px; border-top: 1px solid var(--border);
     }
     header.site.nav-open nav { display: flex; }
     nav a {
-      padding: 11px 4px; border-bottom: 1px solid var(--border);
+      padding: 12px 0; border-bottom: 1px solid var(--border);
       font-size: 15px;
     }
     nav a:last-of-type { border-bottom: none; }
@@ -331,10 +332,10 @@
 
 <div class="hero">
   <div class="wrap">
-    <h1>Keyboard, mouse &amp; pointer bindings<br /><em>the Monaco way</em></h1>
+    <h1>Keyboard, mouse &amp; pointer bindings<br /><em>without the weight</em></h1>
     <p class="tag">
-      A zero-dependency TypeScript library for input management with the keybinding API you know
-      from VS Code — packed into a couple of kilobytes with zero-allocation dispatch.
+      A zero-dependency TypeScript library for DOM keyboard, mouse and pointer event bindings —
+      packed into a couple of kilobytes with zero-allocation dispatch.
     </p>
     <div class="badges">
       <span class="badge">core <b>1.6 KB</b> gzip</span>
@@ -350,8 +351,8 @@
     </div>
 
     <div class="demo">
-      <p>Try it — press any key combination</p>
-      <div class="keys idle" id="demo-keys">click here, then press e.g. Ctrl+Shift+P</div>
+      <p id="demo-hint">Try it — press any key combination</p>
+      <div class="keys idle" id="demo-keys" role="button" tabindex="0">click here, then press e.g. Ctrl+Shift+P</div>
     </div>
   </div>
 </div>
@@ -361,8 +362,8 @@
     <h2>Why kilid</h2>
     <div class="grid">
       <div class="card">
-        <h4>Monaco-compatible encoding</h4>
-        <p>Bindings are single numbers: <code>KeyMod.CtrlCmd | KeyCode.KeyS</code>, chords via <code>KeyChord(...)</code> — the exact bit layout Monaco and VS Code use.</p>
+        <h4>Compact numeric encoding</h4>
+        <p>Bindings are single numbers: <code>KeyMod.CtrlCmd | KeyCode.KeyS</code>, chords via <code>KeyChord(...)</code> — one integer per binding, resolved at registration.</p>
       </div>
       <div class="card">
         <h4>Zero-allocation dispatch</h4>
@@ -378,7 +379,7 @@
       </div>
       <div class="card">
         <h4>Layout-independent</h4>
-        <p>Bindings match physical keys via <code>KeyboardEvent.code</code> — like Monaco — with an <code>event.key</code> fallback for exotic keyboards.</p>
+        <p>Bindings match physical keys via <code>KeyboardEvent.code</code>, with an <code>event.key</code> fallback for exotic keyboards.</p>
       </div>
       <div class="card">
         <h4>One pointing surface</h4>
@@ -433,7 +434,7 @@ keys.dispose();</code></pre>
     <h3><code>chordKeybindings(target, options?)</code></h3>
     <p>
       Drop-in superset of <code>keybindings</code> that also handles two-part chords
-      (<code>Ctrl+K Ctrl+S</code>) with VS Code semantics: a chord prefix shadows single bindings
+      (<code>Ctrl+K Ctrl+S</code>) with prefix-then-second-key semantics: a chord prefix shadows single bindings
       on the same combo, an unmatched second key is swallowed, and the pending prefix expires after
       <code>chordTimeout</code> (default 5000 ms). Separate module — apps without chords never ship
       the state machine. Note: <code>Cmd+S</code> is a single binding with a modifier, <em>not</em>
@@ -474,7 +475,7 @@ pointer.add(MouseButton.Left, 'move', onDraw, { pointerType: ['pen', 'touch'] })
     </p>
 
     <h3>Encoding: <code>KeyMod</code>, <code>KeyCode</code>, <code>MouseButton</code>, <code>KeyChord</code></h3>
-    <p>A binding is one 32-bit number, in Monaco's exact bit layout:</p>
+    <p>A binding is one 32-bit number with a fixed bit layout:</p>
     <pre><code>15 14 13 12 11 10  9  8  7 ... 0
  -  -  C  S  A  W  [ key code ]     C = CtrlCmd  S = Shift  A = Alt  W = WinCtrl
 
@@ -739,12 +740,53 @@ function Editor() {
   });
 })();
 
-// Live demo: shows the pressed combination Monaco-label style.
+// Live demo: keyboard on desktop, pointer on touch/coarse-pointer devices.
 (function () {
   var el = document.getElementById('demo-keys');
-  var isMac = /mac|iphone|ipad/i.test(navigator.platform || '');
+  var hint = document.getElementById('demo-hint');
+  if (!el || !hint) return;
+
   var timer;
-  function label(e) {
+  var coarse = window.matchMedia('(pointer: coarse)').matches;
+  var narrow = window.matchMedia('(max-width: 768px)').matches;
+  var touchMode = coarse || narrow;
+
+  function reset(idleText) {
+    el.classList.add('idle');
+    el.textContent = idleText;
+  }
+
+  function flash(text, idleText) {
+    el.classList.remove('idle');
+    el.textContent = text;
+    clearTimeout(timer);
+    timer = setTimeout(function () { reset(idleText); }, 2500);
+  }
+
+  if (touchMode) {
+    hint.textContent = 'Try it — tap with one or two fingers';
+    reset('tap here — single tap, two-finger tap, or long press');
+
+    var buttons = ['Left', 'Middle', 'Right', 'Back', 'Forward'];
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      var parts = [];
+      if (e.pointerType) parts.push(e.pointerType.charAt(0).toUpperCase() + e.pointerType.slice(1));
+      if (e.button >= 0 && e.button < buttons.length) parts.push(buttons[e.button]);
+      if (e.buttons > 1) parts.push(e.buttons + ' buttons');
+      if (e.shiftKey) parts.push('Shift');
+      if (e.altKey) parts.push('Alt');
+      if (e.ctrlKey) parts.push('Ctrl');
+      if (e.metaKey) parts.push('Meta');
+      flash(parts.join(' \u00b7 ') || 'Pointer', 'tap again\u2026');
+    });
+    return;
+  }
+
+  hint.textContent = 'Try it — press any key combination';
+  var isMac = /mac|iphone|ipad/i.test(navigator.platform || '');
+
+  function keyLabel(e) {
     var parts = [];
     if (isMac) {
       if (e.ctrlKey) parts.push('\u2303');
@@ -767,19 +809,14 @@ function Editor() {
     if (key) parts.push(key);
     return parts.join(isMac ? '' : '+');
   }
-  el.tabIndex = 0;
+
+  reset('click here, then press e.g. Ctrl+Shift+P');
   el.addEventListener('click', function () { el.focus(); });
   window.addEventListener('keydown', function (e) {
-    var text = label(e);
+    var text = keyLabel(e);
     if (!text) return;
     if (document.activeElement === el || el.contains(document.activeElement)) e.preventDefault();
-    el.classList.remove('idle');
-    el.textContent = text;
-    clearTimeout(timer);
-    timer = setTimeout(function () {
-      el.classList.add('idle');
-      el.textContent = 'press another combination\u2026';
-    }, 2500);
+    flash(text, 'press another combination\u2026');
   });
 })();
 </script>
