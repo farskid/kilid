@@ -157,6 +157,16 @@ export function keybindings(target: EventTarget, options: KeybindingsOptions = {
       const parts = decodeKeybinding(keybinding, isMac);
       // Chord encodings (parts.length === 2) belong to chordKeybindings.
       if (parts === null || parts.length !== 1) {
+        // Dev-only diagnostics for the silent no-op: stripped from production
+        // bundles when the consumer's bundler defines process.env.NODE_ENV.
+        if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `[kilid] keybindings().add(${keybinding}): ` +
+              (parts === null
+                ? 'invalid keybinding encoding; nothing was registered.'
+                : 'chord encodings need chordKeybindings(); nothing was registered.')
+          );
+        }
         return NOOP;
       }
       return insert(single, chordHash(parts[0]!), makeBinding(handler, opts));

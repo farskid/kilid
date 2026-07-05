@@ -103,6 +103,11 @@ export function chordKeybindings(
     add(keybinding, handler, opts = {}) {
       const parts = decodeKeybinding(keybinding, isMac);
       if (parts === null) {
+        if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `[kilid] chordKeybindings().add(${keybinding}): invalid keybinding encoding; nothing was registered.`
+          );
+        }
         return NOOP;
       }
       const binding = makeBinding(handler, opts);

@@ -208,6 +208,14 @@ export function pointerBindings(target: EventTarget, options: PointerBindingsOpt
     add(binding, kind, handler, opts = {}) {
       const parts = decodeKeybinding(binding, isMac);
       if (parts === null || parts.length !== 1) {
+        if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `[kilid] pointerBindings().add(${binding}): ` +
+              (parts === null
+                ? 'invalid binding encoding; nothing was registered.'
+                : 'chord encodings are keyboard-only; nothing was registered.')
+          );
+        }
         return () => {};
       }
       const part = parts[0]!;

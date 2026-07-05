@@ -205,6 +205,9 @@ Size-oriented design choices:
   `formatKeybinding` live in a separate module with lazily built tables; the
   core API is numeric-only, so the parser is never pulled in behind your back.
 - **No defensive throws in the core** — invalid encodings register nothing.
+  In development (`process.env.NODE_ENV !== 'production'`) they log a
+  `console.warn` explaining why; the warning blocks are dead-code-eliminated
+  from production bundles, so they cost zero bytes where it counts.
 - **Chords are opt-in** — the pending-prefix state machine ships only with
   `chordKeybindings`; the base dispatcher is a hash-and-lookup.
 

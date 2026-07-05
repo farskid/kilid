@@ -185,12 +185,15 @@ describe('pointerBindings', () => {
       expect(spyRemove).toHaveBeenCalledTimes(1);
     });
 
-    it('chord encodings register nothing (silent no-op)', () => {
+    it('chord encodings register nothing and warn in dev', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const handler = vi.fn();
       const off = service.add((MouseButton.Left | (MouseButton.Left << 16)) >>> 0, 'click', handler);
       mouse(target, 'click', 0);
       expect(handler).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('keyboard-only'));
       off(); // and unsubscribing the no-op is safe
+      warn.mockRestore();
     });
   });
 });

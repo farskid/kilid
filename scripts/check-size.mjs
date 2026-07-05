@@ -63,6 +63,9 @@ async function measure(scenario) {
     format: 'esm',
     write: false,
     external: scenario.external ?? [],
+    // Measure what consumers ship: production builds define NODE_ENV, which
+    // dead-code-eliminates the dev-only warning blocks.
+    define: { 'process.env.NODE_ENV': '"production"' },
     logLevel: 'silent',
   });
   const output = result.outputFiles[0].contents;

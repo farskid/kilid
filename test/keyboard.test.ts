@@ -100,7 +100,8 @@ describe('keybindings', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it('chord encodings register nothing (chords live in chordKeybindings)', () => {
+  it('chord encodings register nothing (chords live in chordKeybindings) and warn in dev', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const handler = vi.fn();
     const off = service.add(
       KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyMod.CtrlCmd | KeyCode.KeyS),
@@ -109,7 +110,20 @@ describe('keybindings', () => {
     key(target, 'KeyK', { ctrl: true });
     key(target, 'KeyS', { ctrl: true });
     expect(handler).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('chordKeybindings'));
     off(); // unsubscribing the no-op is safe
+    warn.mockRestore();
+  });
+
+  it('invalid encodings register nothing and warn in dev; valid ones do not warn', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    service.add(0, vi.fn());
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('invalid'));
+
+    warn.mockClear();
+    service.add(KeyCode.F1, vi.fn());
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('handler disposing its own binding does not skip others', () => {

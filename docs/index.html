@@ -414,7 +414,9 @@ keys.dispose(); // removes all bindings and the DOM listener</code></pre>
     <p class="lede">
       Everything ships from two entry points: <code>kilid</code> (core) and <code>kilid/react</code>
       (adapter). All factories return plain objects; all <code>add()</code> calls return an
-      unsubscribe function. Invalid encodings register nothing — the core never throws.
+      unsubscribe function. Invalid encodings register nothing — the core never throws;
+      in development builds a <code>console.warn</code> explains why (stripped from
+      production bundles via <code>process.env.NODE_ENV</code>).
     </p>
 
     <h3><code>keybindings(target, options?)</code></h3>

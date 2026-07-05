@@ -30,6 +30,14 @@ describe('chordKeybindings', () => {
     service.dispose();
   });
 
+  it('invalid encodings register nothing and warn in dev', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const off = service.add(0, vi.fn());
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('invalid'));
+    off();
+    warn.mockRestore();
+  });
+
   it('handles single-part bindings too (superset of keybindings)', () => {
     const handler = vi.fn();
     service.add(KeyMod.CtrlCmd | KeyCode.KeyS, handler);
