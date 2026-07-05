@@ -239,12 +239,15 @@ The hot path for every event: bitwise hash (modifiers + code packed into one int
 | `keybindings` only (no chords) | 3.3 KB | 1.6 KB |
 | `chordKeybindings` | 3.7 KB | 1.8 KB |
 | Keyboard + pointer | 5.1 KB | 2.3 KB |
-| Everything incl. parse/format | 7.8 KB | 3.3 KB |
+| Everything incl. parse/format | 7.9 KB | 3.3 KB |
 | React: `useKeybinding` only | 4.5 KB | 2.1 KB |
+| React: `useChordKeybinding` only | 4.9 KB | 2.3 KB |
+| React: `useParsedKeybinding` only | 6.6 KB | 2.9 KB |
+| React: `usePointerBinding` only | 4.9 KB | 2.3 KB |
 | React: `useKeybinding` + `usePointerBinding` | 7.0 KB | 2.9 KB |
 | React: all hooks | 9.1 KB | 3.7 KB |
 
-Sizes are enforced in CI with per-scenario budgets and reported as a comment on every pull request. Size-oriented design: factories instead of classes (state minifies to single-letter closure variables), the `KeyCode` table generated at runtime from packed strings (typed statically via a template-literal union), no reverse enum mappings, no defensive throws, and every convenience layer in its own tree-shakeable module.
+React rows exclude the `react` peer (esbuild external). Sizes are enforced in CI via `scripts/size-scenarios/*.mjs` with per-scenario budgets and reported as a comment on every pull request. Size-oriented design: factories instead of classes (state minifies to single-letter closure variables), the `KeyCode` table generated at runtime from packed strings (typed statically via a template-literal union), no reverse enum mappings, no defensive throws, and every convenience layer in its own tree-shakeable module.
 
 Run `npm run bench` for numbers.
 

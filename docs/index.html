@@ -712,10 +712,17 @@ function Editor() {
       <tr><td><code>keybindings</code> only (no chords)</td><td class="num">3.3 KB</td><td class="num">1.6 KB</td></tr>
       <tr><td><code>chordKeybindings</code></td><td class="num">3.7 KB</td><td class="num">1.8 KB</td></tr>
       <tr><td>Keyboard + pointer</td><td class="num">5.1 KB</td><td class="num">2.3 KB</td></tr>
-      <tr><td>Everything incl. parse/format</td><td class="num">7.8 KB</td><td class="num">3.3 KB</td></tr>
+      <tr><td>Everything incl. parse/format</td><td class="num">7.9 KB</td><td class="num">3.3 KB</td></tr>
+      <tr><td>React: <code>useKeybinding</code> only</td><td class="num">4.5 KB</td><td class="num">2.1 KB</td></tr>
+      <tr><td>React: <code>useChordKeybinding</code> only</td><td class="num">4.9 KB</td><td class="num">2.3 KB</td></tr>
+      <tr><td>React: <code>useParsedKeybinding</code> only</td><td class="num">6.6 KB</td><td class="num">2.9 KB</td></tr>
+      <tr><td>React: <code>usePointerBinding</code> only</td><td class="num">4.9 KB</td><td class="num">2.3 KB</td></tr>
+      <tr><td>React: <code>useKeybinding</code> + <code>usePointerBinding</code></td><td class="num">7.0 KB</td><td class="num">2.9 KB</td></tr>
+      <tr><td>React: all hooks</td><td class="num">9.1 KB</td><td class="num">3.7 KB</td></tr>
     </table></div>
     <p>
-      Sizes are enforced in CI with per-scenario budgets and reported as a comment on every pull
+      React rows exclude the <code>react</code> peer. Sizes are enforced in CI via
+      <code>scripts/size-scenarios/*.mjs</code> with per-scenario budgets and reported as a comment on every pull
       request. Size-oriented design: factories instead of classes (state minifies to single-letter
       closure variables), the <code>KeyCode</code> table generated at runtime from packed strings
       (typed statically via a template-literal union), no reverse enum mappings, no defensive
