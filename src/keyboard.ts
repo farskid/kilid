@@ -29,7 +29,7 @@ export interface Keybindings {
    * (`KeyMod.CtrlCmd | KeyCode.KeyS`). For string bindings, parse explicitly:
    * `add(parseKeybinding('Ctrl+S'), ...)` — kept out of the core so the
    * parser only ships to bundles that use it. Chord encodings require
-   * `chordKeybindings` from `kilid` (separate module); here they register
+   * `chordKeybindings` from `@farskid/kilid` (separate module); here they register
    * nothing, as do invalid encodings. Returns an unsubscribe function.
    */
   add(keybinding: number, handler: KeybindingHandler, options?: KeybindingOptions): Unsubscribe;

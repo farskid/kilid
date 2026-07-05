@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  // Separate entries so `kilid/react` is its own chunk; the core stays
+  // Separate entries so `@farskid/kilid/react` is its own chunk; the core stays
   // react-free and the adapter is only ever loaded when imported.
   entry: {
     index: 'src/index.ts',

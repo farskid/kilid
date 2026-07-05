@@ -1,5 +1,5 @@
 {
-  "name": "kilid",
+  "name": "@farskid/kilid",
   "version": "0.1.0",
   "description": "Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API",
   "keywords": [
@@ -21,6 +21,9 @@
     "url": "https://github.com/farskid/kilid/issues"
   },
   "homepage": "https://github.com/farskid/kilid#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

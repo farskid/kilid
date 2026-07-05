@@ -1,7 +1,7 @@
 /**
  * React adapter for kilid.
  *
- * Import from `kilid/react` — this entry is built separately and is never
+ * Import from `@farskid/kilid/react` — this entry is built separately and is never
  * included in your bundle unless you import it.
  *
  * Performance design:
