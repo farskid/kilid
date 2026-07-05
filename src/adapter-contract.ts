@@ -9,7 +9,7 @@ import type { ChordKeybindingsOptions } from './chords.js';
 import type { KeybindingOptions } from './keyboard.js';
 import type { PointerBindingOptions, PointerBindingsOptions } from './pointer.js';
 
-/** Service options keyboard adapters must accept (→ `chordKeybindings`). */
+/** Service options keyboard adapters must accept (→ `keybindings` / `chordKeybindings`). */
 export type KeyboardAdapterServiceOptions = Pick<
   ChordKeybindingsOptions,
   'capture' | 'isMac' | 'chordTimeout'

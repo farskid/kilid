@@ -195,24 +195,29 @@ pointer.add(MouseButton.Left, 'click', (e) => {
 
 ## React adapter
 
-`@farskid/kilid/react` is a separate build entry with `react` as an optional peer dependency — if you never import it, no React-related code enters your bundle.
+`@farskid/kilid/react` is a separate build entry with `react` as an optional peer dependency — if you never import it, no React-related code enters your bundle. Hooks are split for tree-shaking: `useKeybinding` (singles only), `useChordKeybinding` (chords), `useParsedKeybinding` (strings + parser), and `usePointerBinding`.
 
 ```tsx
-import { KeyMod, KeyCode, MouseButton } from '@farskid/kilid';
-import { useKeybinding, usePointerBinding } from '@farskid/kilid/react';
+import { KeyMod, KeyCode, KeyChord, MouseButton } from '@farskid/kilid';
+import {
+  useKeybinding,
+  useChordKeybinding,
+  useParsedKeybinding,
+  usePointerBinding,
+} from '@farskid/kilid/react';
 
 function Editor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, save);   // window by default
-  useKeybinding('Ctrl+K Ctrl+S', openShortcuts);        // strings OK here
+  useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, save);   // lean — no chord machinery
+  useChordKeybinding(
+    KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyMod.CtrlCmd | KeyCode.KeyS),
+    openShortcuts
+  );
+  useParsedKeybinding('Ctrl+Shift+P', quickOpen);       // pulls in parseKeybinding
 
   usePointerBinding(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection, {
     target: canvasRef,
-  });
-  usePointerBinding(MouseButton.Left, 'move', onDraw, {
-    target: canvasRef,
-    pointerType: ['pen', 'touch'],
   });
 
   return <canvas ref={canvasRef} />;
@@ -235,7 +240,9 @@ The hot path for every event: bitwise hash (modifiers + code packed into one int
 | `chordKeybindings` | 3.7 KB | 1.8 KB |
 | Keyboard + pointer | 5.1 KB | 2.3 KB |
 | Everything incl. parse/format | 7.8 KB | 3.3 KB |
-| React adapter (all hooks, react external) | 8.8 KB | 3.6 KB |
+| React: `useKeybinding` only | 4.5 KB | 2.1 KB |
+| React: `useKeybinding` + `usePointerBinding` | 7.0 KB | 2.9 KB |
+| React: all hooks | 9.1 KB | 3.7 KB |
 
 Sizes are enforced in CI with per-scenario budgets and reported as a comment on every pull request. Size-oriented design: factories instead of classes (state minifies to single-letter closure variables), the `KeyCode` table generated at runtime from packed strings (typed statically via a template-literal union), no reverse enum mappings, no defensive throws, and every convenience layer in its own tree-shakeable module.
 
@@ -248,7 +255,7 @@ npm install
 npm test              # unit tests (vitest + happy-dom)
 npm run test:browser  # smoke tests (Playwright + Chromium)
 npm run bench         # dispatch benchmarks
-npm run size          # bundle-size report against budgets
+npm run size          # bundle-size scenarios → scripts/size-scenarios/.out/
 npm run build         # tsup -> dist (esm + cjs + d.ts)
 ```
 

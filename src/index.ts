@@ -8,6 +8,7 @@ export {
 export {
   KeyMod,
   KeyChord,
+  isKeyChordEncoding,
   decodeKeybinding,
   chordHash,
   chordHashFromParts,

@@ -1,75 +1,85 @@
 /**
  * Bundle size report.
  *
- * Bundles realistic consumer scenarios against the built `dist/` output with
- * esbuild, measures minified and gzipped bytes, prints a table, writes
- * `size-report.md` (used by CI to comment on PRs), and fails if any scenario
- * exceeds its budget.
+ * Bundles realistic consumer scenarios from `scripts/size-scenarios/*.mjs`
+ * against the built `dist/` output with esbuild, measures minified and gzipped
+ * bytes, writes minified artifacts to `scripts/size-scenarios/.out/` for
+ * inspection, prints a table, writes `size-report.md` (used by CI to comment
+ * on PRs), and fails if any scenario exceeds its budget.
  *
  * Usage: npm run build && node scripts/check-size.mjs
  */
 import { build } from 'esbuild';
 import { gzipSync } from 'node:zlib';
-import { writeFileSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const scenariosDir = resolve(root, 'scripts/size-scenarios');
+const outDir = resolve(scenariosDir, '.out');
 
 /**
  * Budgets are minified (pre-gzip) bytes. Raise them consciously in the same
  * PR that grows the bundle; CI fails when they're exceeded.
  */
 const SCENARIOS = [
+  { file: 'core-keybindings.mjs', name: 'core: keybindings only (no chords)', budget: 3_500 },
+  { file: 'core-chords.mjs', name: 'core: keybindings + chords', budget: 4_200 },
+  { file: 'core-keyboard-pointer.mjs', name: 'core: keyboard + pointer', budget: 5_500 },
+  { file: 'core-everything.mjs', name: 'core: everything (incl. parse/format)', budget: 8_300 },
   {
-    name: 'core: keybindings only (no chords)',
-    code: `import { keybindings } from './dist/index.js'; console.log(keybindings);`,
-    budget: 3_500,
+    file: 'react-keybinding-only.mjs',
+    name: 'react: useKeybinding only (react external)',
+    budget: 4_700,
+    external: ['react'],
   },
   {
-    name: 'core: keybindings + chords',
-    code: `import { chordKeybindings } from './dist/index.js'; console.log(chordKeybindings);`,
-    budget: 4_200,
+    file: 'react-chord-only.mjs',
+    name: 'react: useChordKeybinding only (react external)',
+    budget: 5_100,
+    external: ['react'],
   },
   {
-    name: 'core: keyboard + pointer',
-    code: `import { keybindings, pointerBindings } from './dist/index.js'; console.log(keybindings, pointerBindings);`,
-    budget: 5_500,
+    file: 'react-parsed-only.mjs',
+    name: 'react: useParsedKeybinding only (react external)',
+    budget: 6_800,
+    external: ['react'],
   },
   {
-    // Grows with every added feature by design (it imports both dispatchers);
-    // real apps import one of the scenarios above.
-    name: 'core: everything (incl. parse/format)',
-    code: `export * from './dist/index.js';`,
-    budget: 8_300,
+    file: 'react-pointer-only.mjs',
+    name: 'react: usePointerBinding only (react external)',
+    budget: 5_200,
+    external: ['react'],
   },
   {
-    name: 'react adapter (all hooks, react external)',
-    code: `export * from './dist/react/index.js';`,
-    budget: 9_300,
+    file: 'react-keybinding-pointer.mjs',
+    name: 'react: useKeybinding + usePointerBinding (react external)',
+    budget: 7_200,
+    external: ['react'],
+  },
+  {
+    file: 'react-all-hooks.mjs',
+    name: 'react: all hooks (react external)',
+    budget: 9_400,
     external: ['react'],
   },
 ];
 
 async function measure(scenario) {
+  const entry = resolve(scenariosDir, scenario.file);
   const result = await build({
-    stdin: {
-      contents: scenario.code,
-      resolveDir: root,
-      sourcefile: 'entry.mjs',
-    },
+    entryPoints: [entry],
     bundle: true,
     minify: true,
     format: 'esm',
     write: false,
     external: scenario.external ?? [],
-    // Measure what consumers ship: production builds define NODE_ENV, which
-    // dead-code-eliminates the dev-only warning blocks.
     define: { 'process.env.NODE_ENV': '"production"' },
     logLevel: 'silent',
   });
   const output = result.outputFiles[0].contents;
-  return { min: output.byteLength, gzip: gzipSync(output, { level: 9 }).byteLength };
+  return { min: output.byteLength, gzip: gzipSync(output, { level: 9 }).byteLength, code: output };
 }
 
 function kb(bytes) {
@@ -81,13 +91,18 @@ if (!existsSync(resolve(root, 'dist/index.js'))) {
   process.exit(1);
 }
 
+mkdirSync(outDir, { recursive: true });
+
 const rows = [];
 let failed = false;
 for (const scenario of SCENARIOS) {
-  const { min, gzip } = await measure(scenario);
+  const { min, gzip, code } = await measure(scenario);
   const over = min > scenario.budget;
   failed ||= over;
   rows.push({ name: scenario.name, min, gzip, budget: scenario.budget, over });
+
+  const outName = basename(scenario.file, '.mjs') + '.min.js';
+  writeFileSync(resolve(outDir, outName), code);
 }
 
 const header = '| Scenario | Minified | Gzipped | Budget | Status |';
@@ -97,7 +112,7 @@ const lines = rows.map(
     `| ${r.name} | ${kb(r.min)} | ${kb(r.gzip)} | ${kb(r.budget)} | ${r.over ? '❌ over' : '✅'} |`
 );
 const table = [header, sep, ...lines].join('\n');
-const markdown = `### 📦 Bundle size\n\n${table}\n\n_Minified with esbuild; budgets apply to minified size. Generated by \`scripts/check-size.mjs\`._\n`;
+const markdown = `### 📦 Bundle size\n\n${table}\n\n_Minified with esbuild; budgets apply to minified size. Artifacts written to \`scripts/size-scenarios/.out/\`. Generated by \`scripts/check-size.mjs\`._\n`;
 
 console.log(markdown);
 writeFileSync(resolve(root, 'size-report.md'), markdown);
