@@ -168,17 +168,73 @@
   .btn.ghost:hover { border-color: var(--accent); text-decoration: none; }
 
   .demo {
-    margin: 56px auto 0; max-width: 560px; background: var(--bg-card);
-    border: 1px solid var(--border); border-radius: 12px; padding: 26px; text-align: center;
+    margin: 56px auto 0; max-width: 640px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 12px; padding: 26px 20px; text-align: center;
   }
-  .demo p { color: var(--text-dim); font-size: 14px; }
-  .demo .keys {
-    margin-top: 14px; min-height: 64px; display: flex; align-items: center; justify-content: center;
-    font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--accent);
-    letter-spacing: .04em; cursor: pointer; touch-action: manipulation; user-select: none;
-    -webkit-tap-highlight-color: transparent;
+  .demo p { color: var(--text-dim); font-size: 14px; margin: 0; }
+  .demo-caption { margin-top: 12px !important; font-size: 12px !important; font-family: var(--mono); }
+  .piano-readout { margin: 16px 0 10px; }
+  .piano-chord {
+    font-family: var(--mono); font-size: clamp(28px, 6vw, 36px); font-weight: 700;
+    color: var(--accent); letter-spacing: .02em; min-height: 1.2em;
   }
-  .demo .keys.idle { color: var(--code-cm); font-size: 16px; font-weight: 400; }
+  .piano-chord[data-state="idle"] { color: var(--code-cm); font-size: 18px; font-weight: 500; }
+  .piano-chord[data-state="partial"] { color: var(--accent-3); }
+  .piano-notes {
+    margin-top: 6px; font-family: var(--mono); font-size: 14px; color: var(--text-dim);
+    min-height: 1.4em;
+  }
+  .piano {
+    position: relative; margin: 0 auto; max-width: 520px; padding: 0 4px;
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  }
+  .piano-whites { display: flex; gap: 2px; }
+  .piano-blacks {
+    position: absolute; top: 0; left: 4px; right: 4px; height: 0; pointer-events: none;
+  }
+  .piano-key {
+    appearance: none; border: none; cursor: pointer; position: relative;
+    border-radius: 0 0 6px 6px; padding: 0;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    transition: background .08s, transform .08s;
+  }
+  .piano-key.white {
+    flex: 1; height: clamp(120px, 28vw, 152px);
+    background: linear-gradient(180deg, #f8f9fc 0%, #e8ebf2 100%);
+    border: 1px solid var(--border); border-top: none;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,.06);
+    color: #5c6478;
+  }
+  [data-theme="dark"] .piano-key.white,
+  :root:not([data-theme="light"]) .piano-key.white {
+    background: linear-gradient(180deg, #e8ebf2 0%, #cdd3df 100%);
+    color: #3a4150;
+  }
+  .piano-key.black {
+    pointer-events: auto;
+    width: 9.5%; height: clamp(72px, 17vw, 92px);
+    background: linear-gradient(180deg, #3a4150 0%, #1a1d26 100%);
+    border: 1px solid #0b0e14; border-top: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,.35);
+    color: #cdd3df; z-index: 2;
+  }
+  .piano-key.black:nth-child(1) { left: 9.5%; }
+  .piano-key.black:nth-child(2) { left: 23.5%; }
+  .piano-key.black:nth-child(3) { left: 51%; }
+  .piano-key.black:nth-child(4) { left: 65%; }
+  .piano-key.black:nth-child(5) { left: 79%; }
+  .piano-key .note {
+    position: absolute; bottom: 8px; left: 0; right: 0;
+    font-family: var(--mono); font-size: 11px; opacity: .75;
+  }
+  .piano-key .kbd {
+    position: absolute; top: 8px; left: 0; right: 0;
+    font-family: var(--mono); font-size: 10px; opacity: .45;
+  }
+  .piano-key.black .note { bottom: 6px; font-size: 10px; }
+  .piano-key.down { transform: translateY(2px); filter: brightness(1.08); }
+  .piano-key.white.down { background: linear-gradient(180deg, #dfe6ff 0%, #c8d4f5 100%); }
+  .piano-key.black.down { background: linear-gradient(180deg, #565f89 0%, #3a4150 100%); }
 
   section { padding: 64px 0 8px; }
   section h2 {
@@ -279,8 +335,9 @@
     .btn { text-align: center; width: 100%; }
 
     .demo { margin-top: 32px; padding: 18px 14px; }
-    .demo .keys { font-size: 22px; min-height: 52px; }
-    .demo .keys.idle { font-size: 14px; line-height: 1.4; padding: 0 4px; }
+    .piano-key.white { height: 118px; }
+    .piano-key.black { height: 70px; }
+    .piano-key .kbd { display: none; }
 
     section { padding: 40px 0 4px; }
     section h2 { font-size: 22px; scroll-margin-top: 72px; }
@@ -351,8 +408,13 @@
     </div>
 
     <div class="demo">
-      <p id="demo-hint">Try it — press any key combination</p>
-      <div class="keys idle" id="demo-keys" role="button" tabindex="0">click here, then press e.g. Ctrl+Shift+P</div>
+      <p id="demo-hint">Hold keys to name a chord — each key uses pointerBindings</p>
+      <div class="piano-readout">
+        <div class="piano-chord" id="piano-chord" data-state="idle">play a chord</div>
+        <div class="piano-notes" id="piano-notes">&mdash;</div>
+      </div>
+      <div class="piano" id="piano" aria-label="Interactive piano demo"></div>
+      <p class="demo-caption" id="piano-binding-count">loading kilid bindings…</p>
     </div>
   </div>
 </div>
@@ -740,85 +802,7 @@ function Editor() {
   });
 })();
 
-// Live demo: keyboard on desktop, pointer on touch/coarse-pointer devices.
-(function () {
-  var el = document.getElementById('demo-keys');
-  var hint = document.getElementById('demo-hint');
-  if (!el || !hint) return;
-
-  var timer;
-  var coarse = window.matchMedia('(pointer: coarse)').matches;
-  var narrow = window.matchMedia('(max-width: 768px)').matches;
-  var touchMode = coarse || narrow;
-
-  function reset(idleText) {
-    el.classList.add('idle');
-    el.textContent = idleText;
-  }
-
-  function flash(text, idleText) {
-    el.classList.remove('idle');
-    el.textContent = text;
-    clearTimeout(timer);
-    timer = setTimeout(function () { reset(idleText); }, 2500);
-  }
-
-  if (touchMode) {
-    hint.textContent = 'Try it — tap with one or two fingers';
-    reset('tap here — single tap, two-finger tap, or long press');
-
-    var buttons = ['Left', 'Middle', 'Right', 'Back', 'Forward'];
-    el.addEventListener('pointerdown', function (e) {
-      e.preventDefault();
-      var parts = [];
-      if (e.pointerType) parts.push(e.pointerType.charAt(0).toUpperCase() + e.pointerType.slice(1));
-      if (e.button >= 0 && e.button < buttons.length) parts.push(buttons[e.button]);
-      if (e.buttons > 1) parts.push(e.buttons + ' buttons');
-      if (e.shiftKey) parts.push('Shift');
-      if (e.altKey) parts.push('Alt');
-      if (e.ctrlKey) parts.push('Ctrl');
-      if (e.metaKey) parts.push('Meta');
-      flash(parts.join(' \u00b7 ') || 'Pointer', 'tap again\u2026');
-    });
-    return;
-  }
-
-  hint.textContent = 'Try it — press any key combination';
-  var isMac = /mac|iphone|ipad/i.test(navigator.platform || '');
-
-  function keyLabel(e) {
-    var parts = [];
-    if (isMac) {
-      if (e.ctrlKey) parts.push('\u2303');
-      if (e.altKey) parts.push('\u2325');
-      if (e.shiftKey) parts.push('\u21E7');
-      if (e.metaKey) parts.push('\u2318');
-    } else {
-      if (e.ctrlKey) parts.push('Ctrl');
-      if (e.shiftKey) parts.push('Shift');
-      if (e.altKey) parts.push('Alt');
-      if (e.metaKey) parts.push('Win');
-    }
-    var code = e.code || '';
-    var key =
-      code.indexOf('Key') === 0 ? code.slice(3) :
-      code.indexOf('Digit') === 0 ? code.slice(5) :
-      code.indexOf('Arrow') === 0 ? code.slice(5) :
-      /^(Shift|Control|Alt|Meta)/.test(code) ? '' :
-      code || e.key;
-    if (key) parts.push(key);
-    return parts.join(isMac ? '' : '+');
-  }
-
-  reset('click here, then press e.g. Ctrl+Shift+P');
-  el.addEventListener('click', function () { el.focus(); });
-  window.addEventListener('keydown', function (e) {
-    var text = keyLabel(e);
-    if (!text) return;
-    if (document.activeElement === el || el.contains(document.activeElement)) e.preventDefault();
-    flash(text, 'press another combination\u2026');
-  });
-})();
 </script>
+<script type="module" src="piano-demo.js"></script>
 </body>
 </html>
