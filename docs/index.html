@@ -5,23 +5,83 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>kilid — fast, tiny keyboard, mouse and pointer bindings for TypeScript</title>
 <meta name="description" content="Zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API. 1.6 KB gzipped core, zero-allocation dispatch, opt-in chords, tree-shakeable React adapter." />
+<meta name="color-scheme" content="light dark" />
+<script>
+(function () {
+  var k = 'kilid-theme';
+  var t = localStorage.getItem(k);
+  if (t !== 'light' && t !== 'dark' && t !== 'system') t = 'system';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
 <style>
-  :root {
+  /* Dark (default + explicit dark) */
+  :root,
+  [data-theme="dark"] {
+    color-scheme: dark;
     --bg: #0b0e14;
     --bg-soft: #11151f;
     --bg-card: #151a26;
+    --header-bg: rgba(11, 14, 20, 0.85);
     --border: #232a3a;
     --text: #e6e9f0;
     --text-dim: #9aa3b5;
     --accent: #7aa2f7;
     --accent-2: #9ece6a;
     --accent-3: #e0af68;
+    --btn-primary-text: #0b0e14;
     --code-str: #9ece6a;
     --code-kw: #bb9af7;
     --code-fn: #7aa2f7;
     --code-num: #ff9e64;
     --code-cm: #565f89;
     --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Menlo, Consolas, monospace;
+  }
+
+  /* Light (explicit) */
+  [data-theme="light"] {
+    color-scheme: light;
+    --bg: #f8f9fc;
+    --bg-soft: #eef1f7;
+    --bg-card: #ffffff;
+    --header-bg: rgba(248, 249, 252, 0.88);
+    --border: #d8dee9;
+    --text: #1a1d26;
+    --text-dim: #5c6478;
+    --accent: #3b6fd9;
+    --accent-2: #3d8b2a;
+    --accent-3: #b45309;
+    --btn-primary-text: #ffffff;
+    --code-str: #3d8b2a;
+    --code-kw: #7c3aed;
+    --code-fn: #2563eb;
+    --code-num: #c2410c;
+    --code-cm: #8b93a7;
+  }
+
+  /* System — follow OS preference */
+  [data-theme="system"] {
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: light) {
+    [data-theme="system"] {
+      --bg: #f8f9fc;
+      --bg-soft: #eef1f7;
+      --bg-card: #ffffff;
+      --header-bg: rgba(248, 249, 252, 0.88);
+      --border: #d8dee9;
+      --text: #1a1d26;
+      --text-dim: #5c6478;
+      --accent: #3b6fd9;
+      --accent-2: #3d8b2a;
+      --accent-3: #b45309;
+      --btn-primary-text: #ffffff;
+      --code-str: #3d8b2a;
+      --code-kw: #7c3aed;
+      --code-fn: #2563eb;
+      --code-num: #c2410c;
+      --code-cm: #8b93a7;
+    }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -37,15 +97,33 @@
 
   header.site {
     position: sticky; top: 0; z-index: 10;
-    background: rgba(11,14,20,.85); backdrop-filter: blur(8px);
+    background: var(--header-bg); backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--border);
   }
-  header.site .wrap { display: flex; align-items: center; gap: 24px; height: 56px; }
-  .logo { font-family: var(--mono); font-weight: 700; font-size: 18px; color: var(--text); }
+  header.site .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
+  .logo { font-family: var(--mono); font-weight: 700; font-size: 18px; color: var(--text); flex-shrink: 0; }
   .logo span { color: var(--accent); }
-  nav { display: flex; gap: 18px; margin-left: auto; font-size: 14px; }
+  nav { display: flex; gap: 18px; margin-left: auto; font-size: 14px; align-items: center; }
   nav a { color: var(--text-dim); }
   nav a:hover { color: var(--text); text-decoration: none; }
+
+  .theme-switch {
+    display: inline-flex; align-items: center; gap: 2px;
+    padding: 3px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-soft);
+  }
+  .theme-switch button {
+    appearance: none; border: none; background: transparent; cursor: pointer;
+    width: 30px; height: 26px; border-radius: 6px; color: var(--text-dim);
+    font-size: 14px; line-height: 1; display: grid; place-items: center;
+    transition: background .15s, color .15s;
+  }
+  .theme-switch button:hover { color: var(--text); background: var(--bg-card); }
+  .theme-switch button[aria-pressed="true"] {
+    color: var(--text); background: var(--bg-card);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+  .theme-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   .hero { padding: 88px 0 56px; text-align: center; }
   .hero h1 {
@@ -74,7 +152,7 @@
   .btn {
     display: inline-block; padding: 10px 22px; border-radius: 8px; font-weight: 600; font-size: 15px;
   }
-  .btn.primary { background: var(--accent); color: #0b0e14; }
+  .btn.primary { background: var(--accent); color: var(--btn-primary-text); }
   .btn.primary:hover { filter: brightness(1.1); text-decoration: none; }
   .btn.ghost { border: 1px solid var(--border); color: var(--text); }
   .btn.ghost:hover { border-color: var(--accent); text-decoration: none; }
@@ -153,6 +231,11 @@
       <a href="#react">React</a>
       <a href="#performance">Performance</a>
       <a href="https://github.com/farskid/kilid">GitHub</a>
+      <div class="theme-switch" role="group" aria-label="Color theme">
+        <button type="button" data-theme-val="system" aria-pressed="false" aria-label="System theme" title="System">◐</button>
+        <button type="button" data-theme-val="light" aria-pressed="false" aria-label="Light theme" title="Light">☀</button>
+        <button type="button" data-theme-val="dark" aria-pressed="false" aria-label="Dark theme" title="Dark">☾</button>
+      </div>
     </nav>
   </div>
 </header>
@@ -413,6 +496,33 @@ function Editor() {
 </footer>
 
 <script>
+// Theme: system (default) | light | dark. Persisted in localStorage.
+(function () {
+  var KEY = 'kilid-theme';
+  var root = document.documentElement;
+  var buttons = document.querySelectorAll('.theme-switch button');
+
+  function current() {
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' || t === 'system' ? t : 'system';
+  }
+
+  function apply(theme) {
+    root.setAttribute('data-theme', theme);
+    localStorage.setItem(KEY, theme);
+    buttons.forEach(function (btn) {
+      btn.setAttribute('aria-pressed', btn.getAttribute('data-theme-val') === theme ? 'true' : 'false');
+    });
+  }
+
+  apply(current());
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      apply(btn.getAttribute('data-theme-val'));
+    });
+  });
+})();
+
 // Tiny syntax highlighter — keywords, strings, comments, numbers, calls.
 (function () {
   var KW = /\b(import|from|const|let|var|function|return|new|typeof|export|default|if|else|for|while|true|false|null|undefined|void|this|class|extends|interface|type|readonly)\b/g;
