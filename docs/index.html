@@ -228,6 +228,81 @@
     color: var(--text-dim); font-size: 14px;
   }
   footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+  /* Collapsible nav — hidden on desktop, toggled on small screens */
+  .nav-toggle {
+    display: none;
+    appearance: none; border: 1px solid var(--border); background: var(--bg-soft);
+    color: var(--text); border-radius: 8px; width: 36px; height: 36px;
+    cursor: pointer; font-size: 18px; line-height: 1; flex-shrink: 0;
+  }
+  .nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .header-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 14px 0 22px; }
+  .table-wrap table { margin: 0; min-width: 520px; }
+
+  @media (max-width: 768px) {
+    .wrap { padding: 0 16px; }
+
+    header.site .wrap {
+      flex-wrap: wrap; align-items: center; height: auto;
+      padding: 10px 0; gap: 10px;
+    }
+    .nav-toggle { display: grid; place-items: center; }
+    nav {
+      display: none; order: 3; width: 100%; flex-direction: column;
+      align-items: stretch; gap: 0; margin-left: 0;
+      padding: 6px 0 10px; border-top: 1px solid var(--border);
+    }
+    header.site.nav-open nav { display: flex; }
+    nav a {
+      padding: 11px 4px; border-bottom: 1px solid var(--border);
+      font-size: 15px;
+    }
+    nav a:last-of-type { border-bottom: none; }
+
+    .hero { padding: 40px 0 32px; }
+    .hero h1 { font-size: clamp(28px, 8vw, 40px); }
+    .hero p.tag { font-size: 16px; line-height: 1.55; margin-top: 14px; }
+    .badges { margin-top: 18px; gap: 8px; }
+    .badge { font-size: 12px; padding: 4px 10px; }
+    .install {
+      margin-top: 22px; font-size: 13px; padding: 10px 14px;
+      max-width: 100%; word-break: break-all;
+    }
+    .cta {
+      margin-top: 18px; flex-direction: column; align-items: stretch;
+      gap: 10px; padding: 0 4px;
+    }
+    .btn { text-align: center; width: 100%; }
+
+    .demo { margin-top: 32px; padding: 18px 14px; }
+    .demo .keys { font-size: 22px; min-height: 52px; }
+    .demo .keys.idle { font-size: 14px; line-height: 1.4; padding: 0 4px; }
+
+    section { padding: 40px 0 4px; }
+    section h2 { font-size: 22px; scroll-margin-top: 72px; }
+    h3 { font-size: 16px; scroll-margin-top: 72px; }
+
+    .grid { grid-template-columns: 1fr; gap: 12px; margin-top: 18px; }
+
+    pre {
+      padding: 14px; font-size: 12px; line-height: 1.55;
+      border-radius: 8px;
+    }
+    section p code, section li code, td code { font-size: 12px; }
+
+    th, td { padding: 8px 10px; font-size: 13px; }
+
+    footer { margin-top: 48px; padding: 24px 0 32px; }
+    footer .wrap { flex-direction: column; align-items: center; text-align: center; }
+  }
+
+  @media (max-width: 380px) {
+    .hero h1 { font-size: 26px; }
+    .theme-switch button { width: 28px; height: 24px; font-size: 13px; }
+  }
 </style>
 </head>
 <body>
@@ -235,17 +310,20 @@
 <header class="site">
   <div class="wrap">
     <div class="logo"><span>⌘</span> kilid</div>
-    <nav>
-      <a href="#quick-start">Quick start</a>
-      <a href="#api">API</a>
-      <a href="#react">React</a>
-      <a href="#performance">Performance</a>
-      <a href="https://github.com/farskid/kilid">GitHub</a>
+    <div class="header-actions">
       <div class="theme-switch" role="group" aria-label="Color theme">
         <button type="button" data-theme-val="system" aria-pressed="false" aria-label="System theme" title="System">◐</button>
         <button type="button" data-theme-val="light" aria-pressed="false" aria-label="Light theme" title="Light">☀</button>
         <button type="button" data-theme-val="dark" aria-pressed="false" aria-label="Dark theme" title="Dark">☾</button>
       </div>
+      <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">☰</button>
+    </div>
+    <nav id="site-nav">
+      <a href="#quick-start">Quick start</a>
+      <a href="#api">API</a>
+      <a href="#react">React</a>
+      <a href="#performance">Performance</a>
+      <a href="https://github.com/farskid/kilid">GitHub</a>
     </nav>
   </div>
 </header>
@@ -398,7 +476,7 @@ pointer.add(MouseButton.Left, 'move', onDraw, { pointerType: ['pen', 'touch'] })
  -  -  C  S  A  W  [ key code ]     C = CtrlCmd  S = Shift  A = Alt  W = WinCtrl
 
 KeyChord(first, second)  // packs the second part into bits 16–31</code></pre>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>Export</th><th>Meaning</th></tr>
       <tr><td><code>KeyMod.CtrlCmd</code></td><td class="dim">Cmd on macOS, Ctrl on Windows/Linux</td></tr>
       <tr><td><code>KeyMod.WinCtrl</code></td><td class="dim">Ctrl on macOS, Win/Meta on Windows/Linux</td></tr>
@@ -408,7 +486,7 @@ KeyChord(first, second)  // packs the second part into bits 16–31</code></pre>
       <tr><td><code>keyCodeFromEvent(e)</code></td><td class="dim">Resolve a live <code>KeyboardEvent</code> to a key code</td></tr>
       <tr><td><code>isModifierKeyCode(c)</code></td><td class="dim">True for Shift/Ctrl/Alt/Meta</td></tr>
       <tr><td><code>decodeKeybinding(n, isMac)</code></td><td class="dim">Encoded binding → platform-resolved parts</td></tr>
-    </table>
+    </table></div>
 
     <h3>Strings: <code>parseKeybinding</code> / <code>formatKeybinding</code></h3>
     <p>
@@ -481,13 +559,13 @@ function Editor() {
       Dispatch cost is flat with respect to the number of registered bindings
       (~2.5M dispatches/sec in benchmarks, 10 vs 500 bindings within 10%).
     </p>
-    <table>
+    <div class="table-wrap"><table>
       <tr><th>Bundle scenario</th><th class="num">Minified</th><th class="num">Gzipped</th></tr>
       <tr><td><code>keybindings</code> only (no chords)</td><td class="num">3.3 KB</td><td class="num">1.6 KB</td></tr>
       <tr><td><code>chordKeybindings</code></td><td class="num">3.7 KB</td><td class="num">1.8 KB</td></tr>
       <tr><td>Keyboard + pointer</td><td class="num">5.1 KB</td><td class="num">2.3 KB</td></tr>
       <tr><td>Everything incl. parse/format</td><td class="num">7.8 KB</td><td class="num">3.3 KB</td></tr>
-    </table>
+    </table></div>
     <p>
       Sizes are enforced in CI with per-scenario budgets and reported as a comment on every pull
       request. Size-oriented design: factories instead of classes (state minifies to single-letter
@@ -530,6 +608,32 @@ function Editor() {
     btn.addEventListener('click', function () {
       apply(btn.getAttribute('data-theme-val'));
     });
+  });
+})();
+
+// Mobile nav toggle
+(function () {
+  var header = document.querySelector('header.site');
+  var toggle = document.querySelector('.nav-toggle');
+  var nav = document.getElementById('site-nav');
+  if (!header || !toggle || !nav) return;
+
+  function close() {
+    header.classList.remove('nav-open');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Open menu');
+    toggle.textContent = '\u2630';
+  }
+
+  toggle.addEventListener('click', function () {
+    var open = header.classList.toggle('nav-open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    toggle.textContent = open ? '\u2715' : '\u2630';
+  });
+
+  nav.querySelectorAll('a[href^="#"]').forEach(function (link) {
+    link.addEventListener('click', close);
   });
 })();
 
