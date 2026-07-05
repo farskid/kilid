@@ -4,7 +4,19 @@
 
 Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API. Optional tree-shakeable React adapter via `kilid/react`.
 
-**[Landing page & docs →](https://farskid.github.io/kilid/)**
+**[Landing page & docs →](https://farskid.github.io/kilid/)** (requires one-time Pages setup below)
+
+## Docs site (GitHub Pages)
+
+The landing page lives in `docs/` and deploys via the **Deploy docs** workflow.
+
+**One-time setup (repo admin only):** GitHub Actions cannot create a Pages site — that requires a human with admin access:
+
+1. Open **Settings → Pages** on the repo
+2. Under **Build and deployment → Source**, choose **GitHub Actions**
+3. Re-run the latest **Deploy docs** workflow from the Actions tab (or push any change under `docs/`)
+
+After that, the site is served at `https://farskid.github.io/kilid/` on every push to `main` that touches `docs/**`.
 
 - **Monaco-compatible encoding** — `KeyMod.CtrlCmd | KeyCode.KeyS`, `KeyChord(...)`, same bit layout.
 - **Chords, pay-per-use** — `Ctrl+K Ctrl+S` with a proper state machine and timeout, like VS Code, via `chordKeybindings()`; apps that only use single bindings (`Cmd+S`) never ship the chord machinery.
