@@ -653,22 +653,30 @@ pointer.add(MouseButton.Left, 'click', (e) =&gt; {
     <p class="lede">
       <code>@farskid/kilid/react</code> is a separate build entry with <code>react</code> as an optional
       peer dependency — if you never import it, no React-related code enters your bundle.
+      Hooks are split for tree-shaking: <code>useKeybinding</code> (singles),
+      <code>useChordKeybinding</code> (chords), <code>useParsedKeybinding</code> (strings),
+      and <code>usePointerBinding</code>.
     </p>
-    <pre><code>import { KeyMod, KeyCode, MouseButton } from '@farskid/kilid';
-import { useKeybinding, usePointerBinding } from '@farskid/kilid/react';
+    <pre><code>import { KeyMod, KeyCode, KeyChord, MouseButton } from '@farskid/kilid';
+import {
+  useKeybinding,
+  useChordKeybinding,
+  useParsedKeybinding,
+  usePointerBinding,
+} from '@farskid/kilid/react';
 
 function Editor() {
   const canvasRef = useRef&lt;HTMLCanvasElement&gt;(null);
 
-  useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, save);   // window by default
-  useKeybinding('Ctrl+K Ctrl+S', openShortcuts);        // strings OK here
+  useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, save);
+  useChordKeybinding(
+    KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyMod.CtrlCmd | KeyCode.KeyS),
+    openShortcuts
+  );
+  useParsedKeybinding('Ctrl+Shift+P', quickOpen);
 
   usePointerBinding(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection, {
     target: canvasRef,
-  });
-  usePointerBinding(MouseButton.Left, 'move', onDraw, {
-    target: canvasRef,
-    pointerType: ['pen', 'touch'],
   });
 
   return &lt;canvas ref={canvasRef} /&gt;;

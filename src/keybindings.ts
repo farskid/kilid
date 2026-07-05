@@ -42,6 +42,11 @@ export function KeyChord(firstPart: number, secondPart: number): number {
   return (firstPart | chordPart) >>> 0;
 }
 
+/** True when `encoding` packs a second chord part in bits 16–31. */
+export function isKeyChordEncoding(encoding: number): boolean {
+  return (encoding & 0xffff0000) !== 0;
+}
+
 /** A keybinding part with modifiers resolved against a concrete platform. */
 export interface ResolvedChord {
   readonly ctrlKey: boolean;

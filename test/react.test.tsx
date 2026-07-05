@@ -2,7 +2,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import { useRef, useState, type RefObject } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KeyCode, KeyMod, MouseButton } from '../src/index.js';
-import { useKeybinding, usePointerBinding } from '../src/react/index.js';
+import { useKeybinding, useParsedKeybinding, usePointerBinding } from '../src/react/index.js';
 
 function key(
   target: EventTarget,
@@ -91,10 +91,10 @@ describe('useKeybinding', () => {
     spyRemove.mockRestore();
   });
 
-  it('accepts string bindings', () => {
+  it('accepts string bindings via useParsedKeybinding', () => {
     const handler = vi.fn();
     function Comp() {
-      useKeybinding('Ctrl+Shift+P', handler);
+      useParsedKeybinding('Ctrl+Shift+P', handler);
       return null;
     }
     render(<Comp />);

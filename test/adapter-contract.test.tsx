@@ -14,7 +14,7 @@ import {
 } from '../src/adapter-contract.js';
 import { KeyCode, KeyMod, MouseButton } from '../src/index.js';
 import type { UseKeybindingOptions, UsePointerBindingOptions } from '../src/react/index.js';
-import { useKeybinding, usePointerBinding } from '../src/react/index.js';
+import { useKeybinding, useChordKeybinding, usePointerBinding } from '../src/react/index.js';
 
 /** Compile-time: adapter hook options must expose every contract key. */
 type MissingKeys<Required, Actual> = Exclude<keyof Required, keyof Actual>;

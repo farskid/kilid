@@ -5,3 +5,4 @@ test-results/
 playwright-report/
 playwright/.cache/
 size-report.md
+scripts/size-scenarios/.out/
