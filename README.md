@@ -230,6 +230,22 @@ Hook options mirror the core API: `target` (EventTarget or ref, default `window`
 - **Structural deps only** — bindings re-register only when the encoding, target, kind or flags actually change; inline `pointerType` arrays cause no churn.
 - **Refcounted service sharing** — hooks on the same target *and* the same service options (`capture`, `isMac`, …) share one listener; the last unmount disposes it.
 
+### Vue — `@farskid/kilid/vue`
+
+Composables: `useKeybinding`, `useChordKeybinding`, `useParsedKeybinding`, `usePointerBinding`. Accept Vue refs for `target` via `{ value }`.
+
+### Solid — `@farskid/kilid/solid`
+
+`createKeybinding`, `createChordKeybinding`, `createParsedKeybinding`, `createPointerBinding` — pass accessor functions for handlers.
+
+### Svelte — `@farskid/kilid/svelte`
+
+`bindKeybinding`, `bindChordKeybinding`, `bindParsedKeybinding`, `bindPointerBinding` — return cleanup; wrap in `$effect`.
+
+### Angular — `@farskid/kilid/angular`
+
+`bindKeybinding` / `bindPointerBinding` for use in `afterNextRender` or services. Standalone attribute directives are in `src/angular/directives.ts` (copy into your app).
+
 ## Performance & size
 
 The hot path for every event: bitwise hash (modifiers + code packed into one int) → one integer-keyed `Map.get()` → handler call. Zero allocations, matched or not. Dispatch cost is flat with respect to the number of registered bindings (~2.5M dispatches/sec in benchmarks, 10 vs 500 bindings within 10%).

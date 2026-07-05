@@ -38,6 +38,26 @@
       "types": "./dist/react/index.d.ts",
       "import": "./dist/react/index.js",
       "require": "./dist/react/index.cjs"
+    },
+    "./vue": {
+      "types": "./dist/vue/index.d.ts",
+      "import": "./dist/vue/index.js",
+      "require": "./dist/vue/index.cjs"
+    },
+    "./svelte": {
+      "types": "./dist/svelte/index.d.ts",
+      "import": "./dist/svelte/index.js",
+      "require": "./dist/svelte/index.cjs"
+    },
+    "./solid": {
+      "types": "./dist/solid/index.d.ts",
+      "import": "./dist/solid/index.js",
+      "require": "./dist/solid/index.cjs"
+    },
+    "./angular": {
+      "types": "./dist/angular/index.d.ts",
+      "import": "./dist/angular/index.js",
+      "require": "./dist/angular/index.cjs"
     }
   },
   "files": [
@@ -55,24 +75,32 @@
     "prepublishOnly": "npm run build && npm run typecheck && npm test"
   },
   "peerDependencies": {
-    "react": ">=17"
+    "react": ">=17",
+    "vue": ">=3.3",
+    "solid-js": ">=1.6",
+    "@angular/core": ">=17"
   },
   "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
+    "react": { "optional": true },
+    "vue": { "optional": true },
+    "solid-js": { "optional": true },
+    "@angular/core": { "optional": true }
   },
   "devDependencies": {
+    "@angular/core": "^19.2.0",
     "@playwright/test": "^1.54.1",
-    "esbuild": "^0.25.0",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.17",
+    "@vue/test-utils": "^2.4.6",
+    "esbuild": "^0.25.0",
     "happy-dom": "^18.0.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "serve": "^14.2.4",
+    "solid-js": "^1.9.7",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "vue": "^3.5.16"
   }
 }
