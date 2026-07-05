@@ -528,8 +528,9 @@ formatKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, { isMac: true }); // "⌘S"</cod
       Pass <code>capture: true</code> when creating the service. It applies to the whole
       dispatcher's DOM listener (all bindings on that instance), not per-binding.
       <code>keybindings</code>, <code>chordKeybindings</code>, and
-      <code>pointerBindings</code> all accept it. The React adapter does not expose it
-      today — services are shared with <code>capture: false</code>.
+      <code>pointerBindings</code> all accept it. React hooks pass it through as
+      <code>capture</code> (service-level — hooks on the same target share a
+      listener only when <code>capture</code> matches).
     </p>
     <pre><code>import { KeyMod, KeyCode, MouseButton, keybindings, pointerBindings } from 'kilid';
 
@@ -537,7 +538,7 @@ formatKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, { isMac: true }); // "⌘S"</cod
 const keys = keybindings(document, { capture: true });
 keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, save);
 
-const list = document.getElementById('list')!;
+const list = document.getElementById('list');
 const pointer = pointerBindings(list, { capture: true });
 pointer.add(MouseButton.Left, 'click', onRowClick);</code></pre>
 
@@ -563,24 +564,24 @@ const offClick = pointer.add(MouseButton.Left, 'click', (e) =&gt; {
     <h3>Event delegation (bubbling)</h3>
     <p>
       Attach to a parent; bubbling events from children reach the listener. There is no
-      built-in selector API — filter with <code>event.target</code> or
-      <code>Element.closest()</code> in the handler (or a <code>when</code> guard).
+      built-in selector API — filter with <code>event.target</code> and
+      <code>Element.closest()</code> inside the handler. The <code>when</code> guard
+      receives no event, so it can't filter by target; use it for app-state conditions
+      (<code>() =&gt; !modalIsOpen</code>) instead.
       <code>pointerenter</code>/<code>pointerleave</code> do <em>not</em> bubble; bind
-      those on the element you care about. Keyboard events don't delegate in the DOM
-      sense — attach to <code>window</code> or the focused element.
+      those on the element you care about. <code>keydown</code> bubbles too, but its
+      target is whatever element has focus — so keyboard bindings usually go on
+      <code>window</code> rather than a container.
     </p>
-    <pre><code>const list = document.getElementById('list')!;
+    <pre><code>const list = document.getElementById('list');
 const pointer = pointerBindings(list);
 
 pointer.add(MouseButton.Left, 'click', (e) =&gt; {
-  const row = (e.target as Element).closest('[data-id]');
+  const row = e.target.closest('[data-id]');
   if (!row) return;
-  select(row.getAttribute('data-id'));
-});
-
-// optional: keep the hot path lean with when (runs before the handler)
-pointer.add(MouseButton.Left, 'click', (e) =&gt; selectFrom(e), {
-  when: () =&gt; (document.activeElement as Element | null)?.closest?.('#list') !== null,
+  select(row.dataset.id);
+}, {
+  when: () =&gt; !modalIsOpen, // app-state guard, checked before the handler runs
 });</code></pre>
   </div>
 </section>
@@ -612,14 +613,18 @@ function Editor() {
   return &lt;canvas ref={canvasRef} /&gt;;
 }</code></pre>
     <p>
-      Hook options: <code>target</code> (EventTarget or ref, default <code>window</code>),
-      <code>when</code>, <code>enabled</code>, <code>preventDefault</code>,
-      <code>stopPropagation</code>, and <code>pointerType</code> (pointer hook only).
+      Hook options mirror the core API: <code>target</code> (EventTarget or ref,
+      default <code>window</code>), <code>when</code>, <code>enabled</code>,
+      <code>preventDefault</code>, <code>stopPropagation</code>,
+      <code>capture</code>, <code>isMac</code>, <code>chordTimeout</code>
+      (keyboard), and <code>pointerType</code> (pointer hook only). Option
+      parity is enforced by <code>test/adapter-contract.test.ts</code> so future
+      framework adapters stay aligned with the core.
     </p>
     <ul class="plain">
       <li><b>Latest-ref handlers</b> — inline closures are fine; changing the handler or guard re-registers nothing and costs zero per-render work.</li>
       <li><b>Structural deps only</b> — bindings re-register only when the encoding, target, kind or flags actually change; inline <code>pointerType</code> arrays cause no churn.</li>
-      <li><b>Refcounted service sharing</b> — all hooks on the same target share one service, so the whole app has one <code>keydown</code> listener; the last unmount disposes it.</li>
+      <li><b>Refcounted service sharing</b> — hooks on the same target <em>and</em> the same service options (<code>capture</code>, <code>isMac</code>, …) share one listener; the last unmount disposes it.</li>
     </ul>
   </div>
 </section>

@@ -46,7 +46,7 @@ const SCENARIOS = [
   {
     name: 'react adapter (all hooks, react external)',
     code: `export * from './dist/react/index.js';`,
-    budget: 8_600,
+    budget: 9_300,
     external: ['react'],
   },
 ];
