@@ -6,7 +6,7 @@
 
 A zero-dependency TypeScript library for DOM keyboard, mouse and pointer event bindings — packed into a couple of kilobytes with zero-allocation dispatch.
 
-**[Landing page & live demo →](https://farskid.github.io/kilid/)**
+**[Docs & live demo →](https://farskid.github.io/kilid/)**
 
 | | |
 |---|---|
