@@ -142,6 +142,20 @@ describe('useKeybinding', () => {
     spyAdd.mockRestore();
   });
 
+  it('shares one capture-phase service when capture matches', () => {
+    const spyAdd = vi.spyOn(window, 'addEventListener');
+    function Comp() {
+      useKeybinding(KeyCode.F5, vi.fn(), { capture: true });
+      useKeybinding(KeyCode.F6, vi.fn(), { capture: true });
+      return null;
+    }
+    render(<Comp />);
+    const keydownAdds = spyAdd.mock.calls.filter(([type]) => type === 'keydown');
+    expect(keydownAdds).toHaveLength(1);
+    expect(keydownAdds[0]![2]).toEqual({ capture: true });
+    spyAdd.mockRestore();
+  });
+
   it('respects enabled and a changing when guard without re-registering', () => {
     const handler = vi.fn();
     let setAllowed: (v: boolean) => void = () => {};

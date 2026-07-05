@@ -151,9 +151,11 @@ function Editor() {
 }
 ```
 
-Hook options: `target` (EventTarget or ref, default `window`), `when`,
-`enabled`, `preventDefault`, `stopPropagation`, and `pointerType` (pointer
-hook only).
+Hook options mirror the core API: `target` (EventTarget or ref, default
+`window`), `when`, `enabled`, `preventDefault`, `stopPropagation`, `capture`,
+`isMac`, `chordTimeout` (keyboard), and `pointerType` (pointer hook only).
+`test/adapter-contract.test.ts` enforces this contract for React and future
+adapters.
 
 The adapter is built for render-heavy apps:
 
@@ -164,9 +166,10 @@ The adapter is built for render-heavy apps:
   binding, target, event kind, or dispatch flags actually change. Inline
   `pointerType` arrays are serialized to a primitive dep, so new array
   identities per render cause no churn.
-- **Refcounted service sharing** — all hooks bound to the same target share
-  one service instance, so the whole app has one `keydown` listener no matter
-  how many components use hotkeys. The last unmounting hook disposes it.
+- **Refcounted service sharing** — hooks on the same target *and* the same
+  service options (`capture`, `isMac`, …) share one service instance, so the
+  whole app has one `keydown` listener per config. The last unmounting hook
+  disposes it.
 
 ## Performance
 

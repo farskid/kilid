@@ -528,8 +528,9 @@ formatKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, { isMac: true }); // "⌘S"</cod
       Pass <code>capture: true</code> when creating the service. It applies to the whole
       dispatcher's DOM listener (all bindings on that instance), not per-binding.
       <code>keybindings</code>, <code>chordKeybindings</code>, and
-      <code>pointerBindings</code> all accept it. The React adapter does not expose it
-      today — services are shared with <code>capture: false</code>.
+      <code>pointerBindings</code> all accept it. React hooks pass it through as
+      <code>capture</code> (service-level — hooks on the same target share a
+      listener only when <code>capture</code> matches).
     </p>
     <pre><code>import { KeyMod, KeyCode, MouseButton, keybindings, pointerBindings } from 'kilid';
 
@@ -612,14 +613,18 @@ function Editor() {
   return &lt;canvas ref={canvasRef} /&gt;;
 }</code></pre>
     <p>
-      Hook options: <code>target</code> (EventTarget or ref, default <code>window</code>),
-      <code>when</code>, <code>enabled</code>, <code>preventDefault</code>,
-      <code>stopPropagation</code>, and <code>pointerType</code> (pointer hook only).
+      Hook options mirror the core API: <code>target</code> (EventTarget or ref,
+      default <code>window</code>), <code>when</code>, <code>enabled</code>,
+      <code>preventDefault</code>, <code>stopPropagation</code>,
+      <code>capture</code>, <code>isMac</code>, <code>chordTimeout</code>
+      (keyboard), and <code>pointerType</code> (pointer hook only). Option
+      parity is enforced by <code>test/adapter-contract.test.ts</code> so future
+      framework adapters stay aligned with the core.
     </p>
     <ul class="plain">
       <li><b>Latest-ref handlers</b> — inline closures are fine; changing the handler or guard re-registers nothing and costs zero per-render work.</li>
       <li><b>Structural deps only</b> — bindings re-register only when the encoding, target, kind or flags actually change; inline <code>pointerType</code> arrays cause no churn.</li>
-      <li><b>Refcounted service sharing</b> — all hooks on the same target share one service, so the whole app has one <code>keydown</code> listener; the last unmount disposes it.</li>
+      <li><b>Refcounted service sharing</b> — hooks on the same target <em>and</em> the same service options (<code>capture</code>, <code>isMac</code>, …) share one listener; the last unmount disposes it.</li>
     </ul>
   </div>
 </section>

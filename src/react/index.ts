@@ -14,12 +14,17 @@
  *   (one DOM listener per event type across the whole app).
  */
 import { useEffect, useRef, type RefObject } from 'react';
+import type {
+  AdapterBindingTarget,
+  KeyboardAdapterServiceOptions,
+  PointerAdapterServiceOptions,
+} from '../adapter-contract.js';
 import { parseKeybinding } from '../format.js';
 import type { KeybindingHandler } from '../keyboard.js';
 import type { PointerBindingHandler, PointerEventKind, PointerType } from '../pointer.js';
 import { keyboardServices, pointerServices } from './serviceCache.js';
 
-export type BindingTarget = EventTarget | RefObject<EventTarget | null> | null | undefined;
+export type BindingTarget = AdapterBindingTarget;
 
 interface CommonHookOptions {
   /**
@@ -35,9 +40,9 @@ interface CommonHookOptions {
   readonly stopPropagation?: boolean | undefined;
 }
 
-export interface UseKeybindingOptions extends CommonHookOptions {}
+export interface UseKeybindingOptions extends CommonHookOptions, KeyboardAdapterServiceOptions {}
 
-export interface UsePointerBindingOptions extends CommonHookOptions {
+export interface UsePointerBindingOptions extends CommonHookOptions, PointerAdapterServiceOptions {
   readonly pointerType?: PointerType | readonly PointerType[] | undefined;
 }
 
@@ -63,12 +68,28 @@ function resolveTarget(target: BindingTarget): EventTarget | null {
   return target as EventTarget;
 }
 
+function keyboardServiceOptions(options: UseKeybindingOptions): KeyboardAdapterServiceOptions {
+  return {
+    capture: options.capture,
+    isMac: options.isMac,
+    chordTimeout: options.chordTimeout,
+  };
+}
+
+function pointerServiceOptions(options: UsePointerBindingOptions): PointerAdapterServiceOptions {
+  return {
+    capture: options.capture,
+    isMac: options.isMac,
+  };
+}
+
 /**
  * Register a Monaco-style keybinding, e.g.
  *
  * ```tsx
  * useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, save);
  * useKeybinding('Ctrl+K Ctrl+S', openShortcuts, { target: editorRef });
+ * useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, save, { capture: true });
  * ```
  */
 export function useKeybinding(
@@ -83,8 +104,10 @@ export function useKeybinding(
   // a stable primitive; `'Ctrl+S'` re-parses per render (cheap, registration
   // path only) but re-registers nothing.
   const encoded = typeof binding === 'string' ? parseKeybinding(binding) : binding;
-  const { enabled = true, preventDefault, stopPropagation } = options;
+  const { enabled = true, preventDefault, stopPropagation, capture, isMac, chordTimeout } =
+    options;
   const targetRef = useLatestRef(options.target);
+  const serviceOpts = keyboardServiceOptions(options);
 
   useEffect(() => {
     if (!enabled) {
@@ -94,7 +117,7 @@ export function useKeybinding(
     if (target === null) {
       return;
     }
-    const service = keyboardServices.acquire(target);
+    const service = keyboardServices.acquire(target, serviceOpts);
     const off = service.add(encoded, (e) => handlerRef.current(e), {
       when: () => whenRef.current === undefined || whenRef.current(),
       preventDefault,
@@ -102,11 +125,20 @@ export function useKeybinding(
     });
     return () => {
       off();
-      keyboardServices.release(target);
+      keyboardServices.release(target, serviceOpts);
     };
     // targetRef/handlerRef/whenRef are stable ref objects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [encoded, enabled, preventDefault, stopPropagation, resolveTarget(options.target)]);
+  }, [
+    encoded,
+    enabled,
+    preventDefault,
+    stopPropagation,
+    capture,
+    isMac,
+    chordTimeout,
+    resolveTarget(options.target),
+  ]);
 }
 
 /**
@@ -119,6 +151,7 @@ export function useKeybinding(
  * usePointerBinding(MouseButton.Left, 'move', onDraw, {
  *   target: canvasRef,
  *   pointerType: ['pen', 'touch'],
+ *   capture: true,
  * });
  * ```
  */
@@ -130,8 +163,9 @@ export function usePointerBinding<K extends PointerEventKind>(
 ): void {
   const handlerRef = useLatestRef(handler);
   const whenRef = useLatestRef(options.when);
-  const { enabled = true, preventDefault, stopPropagation } = options;
+  const { enabled = true, preventDefault, stopPropagation, capture, isMac } = options;
   const targetRef = useLatestRef(options.target);
+  const serviceOpts = pointerServiceOptions(options);
   // Pointer types are a tiny list; serialize to a primitive dep so callers
   // can pass inline arrays without re-registering every render.
   const pointerTypeKey =
@@ -149,7 +183,7 @@ export function usePointerBinding<K extends PointerEventKind>(
     if (target === null) {
       return;
     }
-    const service = pointerServices.acquire(target);
+    const service = pointerServices.acquire(target, serviceOpts);
     const off = service.add(binding, kind, ((e) => handlerRef.current(e)) as PointerBindingHandler<K>, {
       when: () => whenRef.current === undefined || whenRef.current(),
       preventDefault,
@@ -158,8 +192,18 @@ export function usePointerBinding<K extends PointerEventKind>(
     });
     return () => {
       off();
-      pointerServices.release(target);
+      pointerServices.release(target, serviceOpts);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [binding, kind, enabled, preventDefault, stopPropagation, pointerTypeKey, resolveTarget(options.target)]);
+  }, [
+    binding,
+    kind,
+    enabled,
+    preventDefault,
+    stopPropagation,
+    capture,
+    isMac,
+    pointerTypeKey,
+    resolveTarget(options.target),
+  ]);
 }
