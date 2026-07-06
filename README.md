@@ -28,6 +28,22 @@ npm install @farskid/kilid
 - **Layout-independent** — bindings match physical keys via `KeyboardEvent.code`, with an `event.key` fallback for exotic keyboards.
 - **One pointing surface** — pointer events subsume mouse. A single service covers down/move/click/wheel with the same modifier encoding, plus pen/touch filters.
 
+## How kilid compares
+
+| Library | Keyboard | Chords | Pointer / mouse | Zero deps | Tree-shakeable | Framework hooks | Typical core gzip |
+|---|---|:---:|:---:|:---:|:---:|---|---:|
+| **kilid** | ✓ | ✓ opt-in | ✓ | ✓ | ✓ | React | **1.6 KB** |
+| [Mousetrap](https://github.com/ccampbell/mousetrap) | ✓ | ✓ | — | ✓ | — | — | ~2 KB |
+| [hotkeys-js](https://github.com/jaywcjlove/hotkeys-js) | ✓ | — | — | ✓ | partial | — | ~3 KB |
+| [tinykeys](https://github.com/jamiebuilds/tinykeys) | ✓ | ✓ | — | ✓ | — | — | ~0.7 KB |
+| [react-hotkeys-hook](https://github.com/JohannesKlauss/react-hotkeys-hook) | ✓ | ✓ | — | — | partial | React | ~4 KB+ |
+| [@tanstack/react-hotkeys](https://github.com/TanStack/hotkeys) | ✓ | ✓ | — | — | partial | React | ~5 KB+ |
+| [cmdk](https://github.com/pacocoursey/cmdk) *(palette UI)* | partial | — | — | — | — | React | ~8 KB+ |
+
+Competitor sizes are approximate (typical single-import usage). kilid numbers are from CI size scenarios.
+
+**When kilid fits:** editors, canvases, dashboards — keyboard + pointer + chords in one package. **When something else fits:** keyboard-only React hotkeys (`tinykeys`, `react-hotkeys-hook`); command palette UI (`cmdk` — pair with kilid, see Recipes).
+
 ## Quick start
 
 ```ts
@@ -192,6 +208,25 @@ pointer.add(MouseButton.Left, 'click', (e) => {
   when: () => !modalIsOpen, // app-state guard, checked before the handler runs
 });
 ```
+
+### Testing (Vitest / Playwright)
+
+Import `@farskid/kilid/testing` to dispatch DOM events that match the same numeric encodings your app registers:
+
+```ts
+import { KeyMod, KeyCode, MouseButton, keybindings } from '@farskid/kilid';
+import { dispatchKeybinding, dispatchPointerBinding } from '@farskid/kilid/testing';
+
+const keys = keybindings(window);
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, save);
+
+dispatchKeybinding(window, KeyMod.CtrlCmd | KeyCode.KeyS);
+expect(save).toHaveBeenCalled();
+
+dispatchPointerBinding(canvas, MouseButton.Left, 'down');
+```
+
+Also exported: `dispatchKeyPart`, `dispatchKeybindingString`, `keyCodeToDomCode`.
 
 ### Command palette (cmdk / kbar)
 
