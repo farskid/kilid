@@ -28,6 +28,7 @@ const SCENARIOS = [
   { file: 'core-chords.mjs', name: 'core: keybindings + chords', budget: 4_200 },
   { file: 'core-keyboard-pointer.mjs', name: 'core: keyboard + pointer', budget: 5_500 },
   { file: 'core-everything.mjs', name: 'core: everything (incl. parse/format)', budget: 8_300 },
+  { file: 'testing-helpers.mjs', name: 'testing: dispatch helpers', budget: 4_000 },
   {
     file: 'react-keybinding-only.mjs',
     name: 'react: useKeybinding only (react external)',

@@ -749,6 +749,29 @@ pointer.add(MouseButton.Left, 'click', (e) =&gt; {
 }, {
   when: () =&gt; !modalIsOpen, // app-state guard, checked before the handler runs
 });</code></pre>
+
+    <h3>Testing (Vitest / Playwright)</h3>
+    <p>
+      Import <code>@farskid/kilid/testing</code> to dispatch DOM events that match the same
+      numeric encodings your app registers — no hand-rolled <code>KeyboardEvent</code> objects
+      with wrong modifier flags.
+    </p>
+    <pre><code>import { KeyMod, KeyCode, MouseButton, keybindings } from '@farskid/kilid';
+import { dispatchKeybinding, dispatchPointerBinding } from '@farskid/kilid/testing';
+
+const keys = keybindings(window);
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, save);
+
+dispatchKeybinding(window, KeyMod.CtrlCmd | KeyCode.KeyS);
+expect(save).toHaveBeenCalled();
+
+const el = document.getElementById('canvas')!;
+dispatchPointerBinding(el, MouseButton.Left, 'down');</code></pre>
+    <p>
+      Also exported: <code>dispatchKeyPart</code> (single key of a chord),
+      <code>dispatchKeybindingString</code> (pulls in the parser), and
+      <code>keyCodeToDomCode</code> for custom fixtures.
+    </p>
   </div>
 </section>
 

@@ -209,6 +209,25 @@ pointer.add(MouseButton.Left, 'click', (e) => {
 });
 ```
 
+### Testing (Vitest / Playwright)
+
+Import `@farskid/kilid/testing` to dispatch DOM events that match the same numeric encodings your app registers:
+
+```ts
+import { KeyMod, KeyCode, MouseButton, keybindings } from '@farskid/kilid';
+import { dispatchKeybinding, dispatchPointerBinding } from '@farskid/kilid/testing';
+
+const keys = keybindings(window);
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, save);
+
+dispatchKeybinding(window, KeyMod.CtrlCmd | KeyCode.KeyS);
+expect(save).toHaveBeenCalled();
+
+dispatchPointerBinding(canvas, MouseButton.Left, 'down');
+```
+
+Also exported: `dispatchKeyPart`, `dispatchKeybindingString`, `keyCodeToDomCode`.
+
 ## React adapter
 
 `@farskid/kilid/react` is a separate build entry with `react` as an optional peer dependency — if you never import it, no React-related code enters your bundle. Hooks are split for tree-shaking: `useKeybinding` (singles only), `useChordKeybinding` (chords), `useParsedKeybinding` (strings + parser), and `usePointerBinding`.
