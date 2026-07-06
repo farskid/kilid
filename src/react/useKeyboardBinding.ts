@@ -3,13 +3,13 @@ import type { KeyboardAdapterServiceOptions } from '../adapter-contract.js';
 import type { KeybindingHandler, Keybindings } from '../keyboard.js';
 import {
   keyboardServiceOptions,
-  resolveTarget,
   useLatestRef,
+  resolveTarget,
   type UseKeybindingOptions,
 } from './shared.js';
-import type { ServiceCache } from './serviceCache.js';
+import type { ServiceCache } from '../adapter/serviceCache.js';
+import { subscribeKeybinding } from '../adapter/subscribeKeybinding.js';
 
-/** Shared hook body — callers supply the service cache (keybindings vs chords). */
 export function useKeyboardBinding(
   encoded: number,
   handler: KeybindingHandler,
@@ -32,17 +32,15 @@ export function useKeyboardBinding(
     if (target === null) {
       return;
     }
-    const service = services.acquire(target, serviceOpts);
-    const off = service.add(encoded, (e) => handlerRef.current(e), {
-      when: () => whenRef.current === undefined || whenRef.current(),
-      preventDefault,
-      stopPropagation,
-    });
-    return () => {
-      off();
-      services.release(target, serviceOpts);
-    };
-    // targetRef/handlerRef/whenRef are stable ref objects.
+    return subscribeKeybinding(
+      encoded,
+      () => handlerRef.current,
+      () => whenRef.current,
+      target,
+      serviceOpts,
+      { preventDefault, stopPropagation },
+      services
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     encoded,

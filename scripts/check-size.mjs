@@ -46,7 +46,7 @@ const SCENARIOS = [
   {
     file: 'react-parsed-only.mjs',
     name: 'react: useParsedKeybinding only (react external)',
-    budget: 6_800,
+    budget: 7_000,
     external: ['react'],
   },
   {
@@ -64,8 +64,20 @@ const SCENARIOS = [
   {
     file: 'react-all-hooks.mjs',
     name: 'react: all hooks (react external)',
-    budget: 9_900,
+    budget: 10_300,
     external: ['react'],
+  },
+  {
+    file: 'vue-keybinding-only.mjs',
+    name: 'vue: useKeybinding only (vue external)',
+    budget: 5_000,
+    external: ['vue'],
+  },
+  {
+    file: 'solid-keybinding-only.mjs',
+    name: 'solid: createKeybinding only (solid-js external)',
+    budget: 5_000,
+    external: ['solid-js'],
   },
 ];
 

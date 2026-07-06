@@ -1,17 +1,14 @@
 import { useEffect } from 'react';
+import { pointerServices } from '../adapter/pointerServiceCache.js';
+import { pointerServiceOptions, pointerTypeKey } from '../adapter/options.js';
+import { subscribePointerBinding } from '../adapter/subscribePointerBinding.js';
 import type {
   PointerBindingHandler,
   PointerButtonlessKind,
   PointerEventKind,
   PointerType,
 } from '../pointer.js';
-import { pointerServices } from './pointerServiceCache.js';
-import {
-  pointerServiceOptions,
-  resolveTarget,
-  useLatestRef,
-  type UsePointerBindingOptions,
-} from './shared.js';
+import { resolveTarget, useLatestRef, type UsePointerBindingOptions } from './shared.js';
 
 /**
  * Register a pointer/mouse binding, e.g.
@@ -58,14 +55,7 @@ export function usePointerBinding<K extends PointerEventKind>(
   const { enabled = true, preventDefault, stopPropagation, capture, isMac } = options;
   const targetRef = useLatestRef(options.target);
   const serviceOpts = pointerServiceOptions(options);
-  // Pointer types are a tiny list; serialize to a primitive dep so callers
-  // can pass inline arrays without re-registering every render.
-  const pointerTypeKey =
-    options.pointerType === undefined
-      ? ''
-      : typeof options.pointerType === 'string'
-        ? options.pointerType
-        : [...options.pointerType].sort().join(',');
+  const ptKey = pointerTypeKey(options.pointerType);
 
   useEffect(() => {
     if (!enabled) {
@@ -75,17 +65,20 @@ export function usePointerBinding<K extends PointerEventKind>(
     if (target === null) {
       return;
     }
-    const service = pointerServices.acquire(target, serviceOpts);
-    const off = service.add(binding, kind, ((e) => handlerRef.current(e)) as PointerBindingHandler<K>, {
-      when: () => whenRef.current === undefined || whenRef.current(),
-      preventDefault,
-      stopPropagation,
-      pointerType: pointerTypeKey === '' ? undefined : (pointerTypeKey.split(',') as PointerType[]),
-    });
-    return () => {
-      off();
-      pointerServices.release(target, serviceOpts);
-    };
+    return subscribePointerBinding(
+      binding,
+      kind,
+      () => handlerRef.current,
+      () => whenRef.current,
+      target,
+      serviceOpts,
+      {
+        preventDefault,
+        stopPropagation,
+        pointerType: ptKey === '' ? undefined : (ptKey.split(',') as PointerType[]),
+      },
+      pointerServices
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     binding,
@@ -95,7 +88,7 @@ export function usePointerBinding<K extends PointerEventKind>(
     stopPropagation,
     capture,
     isMac,
-    pointerTypeKey,
+    ptKey,
     resolveTarget(options.target),
   ]);
 }

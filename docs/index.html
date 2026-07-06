@@ -378,7 +378,7 @@
       <a href="#quick-start">Quick start</a>
       <a href="#api">API</a>
       <a href="#recipes">Recipes</a>
-      <a href="#react">React</a>
+      <a href="#react">Adapters</a>
       <a href="#performance">Performance</a>
       <a href="https://github.com/farskid/kilid">GitHub</a>
     </nav>
@@ -779,19 +779,59 @@ dispatchPointerBinding(el, MouseButton.Left, 'down');</code></pre>
       <code>dispatchKeybindingString</code> (pulls in the parser), and
       <code>keyCodeToDomCode</code> for custom fixtures.
     </p>
+
+    <h3>Command palette (cmdk / kbar)</h3>
+    <p>
+      <a href="https://github.com/pacocoursey/cmdk">cmdk</a> and
+      <a href="https://github.com/timc1/kbar">kbar</a> render the palette UI and handle
+      in-palette keyboard navigation — but global shortcuts to <em>open</em> the palette
+      (<code>⌘K</code>, <code>⌘⇧P</code>) belong on <code>document</code> with kilid.
+      Use <code>when</code> so bindings don't fire while the palette is open.
+    </p>
+    <pre><code>import { KeyMod, KeyCode, keybindings } from '@farskid/kilid';
+import { Command } from 'cmdk'; // or KBarProvider from kbar
+
+const keys = keybindings(document, { capture: true });
+
+let paletteOpen = false;
+
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyK, () =&gt; {
+  paletteOpen = true;
+  setOpen(true);
+}, {
+  when: () =&gt; !paletteOpen,
+  preventDefault: true,
+});
+
+keys.add(KeyCode.Escape, () =&gt; {
+  paletteOpen = false;
+  setOpen(false);
+}, {
+  when: () =&gt; paletteOpen,
+});
+
+// cmdk handles arrow keys / Enter inside the open dialog.
+// kilid handles global open/close and app shortcuts (⌘S, etc.) with when guards.</code></pre>
+    <p>
+      <strong>React:</strong> register in a root layout effect or
+      <code>useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyK, open, &#123; when: () =&gt; !open &#125;)</code>.
+      <strong>kbar:</strong> same pattern — kilid opens <code>KBarProvider</code>,
+      kbar owns the action list.
+    </p>
   </div>
 </section>
 
 <section id="react">
   <div class="wrap">
-    <h2>React adapter</h2>
+    <h2>Framework adapters</h2>
     <p class="lede">
-      <code>@farskid/kilid/react</code> is a separate build entry with <code>react</code> as an optional
-      peer dependency — if you never import it, no React-related code enters your bundle.
-      Hooks are split for tree-shaking: <code>useKeybinding</code> (singles),
-      <code>useChordKeybinding</code> (chords), <code>useParsedKeybinding</code> (strings),
-      and <code>usePointerBinding</code>.
+      Each adapter is a separate entry point with an optional peer dependency — import only
+      the framework you use. All adapters share the same option contract
+      (<code>capture</code>, <code>when</code>, <code>enabled</code>, …) enforced in
+      <code>test/adapter-contract.test.ts</code>.
     </p>
+
+    <h3>React — <code>@farskid/kilid/react</code></h3>
     <pre><code>import { KeyMod, KeyCode, KeyChord, MouseButton } from '@farskid/kilid';
 import {
   useKeybinding,
@@ -830,6 +870,46 @@ function Editor() {
       <li><b>Structural deps only</b> — bindings re-register only when the encoding, target, kind or flags actually change; inline <code>pointerType</code> arrays cause no churn.</li>
       <li><b>Refcounted service sharing</b> — hooks on the same target <em>and</em> the same service options (<code>capture</code>, <code>isMac</code>, …) share one listener; the last unmount disposes it.</li>
     </ul>
+
+    <h3>Vue — <code>@farskid/kilid/vue</code></h3>
+    <pre><code>import { KeyMod, KeyCode } from '@farskid/kilid';
+import { useKeybinding, usePointerBinding } from '@farskid/kilid/vue';
+
+export default {
+  setup() {
+    const canvas = ref&lt;HTMLCanvasElement | null&gt;(null);
+    useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, save);
+    usePointerBinding(MouseButton.Left, 'down', onDown, { target: canvas });
+  },
+};</code></pre>
+
+    <h3>Solid — <code>@farskid/kilid/solid</code></h3>
+    <pre><code>import { KeyMod, KeyCode } from '@farskid/kilid';
+import { createKeybinding, createPointerBinding } from '@farskid/kilid/solid';
+
+createKeybinding(KeyMod.CtrlCmd | KeyCode.KeyS, () =&gt; save);
+createPointerBinding(MouseButton.Left, 'down', () =&gt; onDown);</code></pre>
+
+    <h3>Svelte — <code>@farskid/kilid/svelte</code></h3>
+    <p>Imperative <code>bind*</code> helpers — wrap in Svelte 5 <code>$effect</code> for lifecycle:</p>
+    <pre><code>import { KeyMod, KeyCode } from '@farskid/kilid';
+import { bindKeybinding } from '@farskid/kilid/svelte';
+
+$effect(() =&gt; bindKeybinding(window, KeyMod.CtrlCmd | KeyCode.KeyS, save));</code></pre>
+
+    <h3>Angular — <code>@farskid/kilid/angular</code></h3>
+    <pre><code>import { afterNextRender } from '@angular/core';
+import { KeyMod, KeyCode } from '@farskid/kilid';
+import { bindKeybinding } from '@farskid/kilid/angular';
+
+afterNextRender(() =&gt; {
+  bindKeybinding(window, KeyMod.CtrlCmd | KeyCode.KeyS, () =&gt; this.save());
+});</code></pre>
+    <p>
+      Standalone attribute directives (<code>KilidKeybindingDirective</code>) live in
+      <code>src/angular/directives.ts</code> for copy-into-app use — esbuild does not
+      emit decorator metadata in the published bundle yet.
+    </p>
   </div>
 </section>
 
