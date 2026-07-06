@@ -1,0 +1,33 @@
+# One-time (or occasional) admin workflow to protect main.
+# Run manually from Actions → Setup branch protection → Run workflow.
+# Requires a token with admin:repo scope (default GITHUB_TOKEN works for repo admins).
+
+name: Setup branch protection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  administration: write
+
+jobs:
+  protect-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Protect main branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            --method PUT \
+            "repos/${{ github.repository }}/branches/main/protection" \
+            -f required_status_checks[strict]=true \
+            -f required_status_checks[contexts][]='CI / test' \
+            -f enforce_admins=false \
+            -f required_pull_request_reviews[required_approving_review_count]=0 \
+            -f required_pull_request_reviews[dismiss_stale_reviews]=true \
+            -f restrictions=null \
+            -f allow_force_pushes=false \
+            -f allow_deletions=false
+
+          echo "main is now protected: PR required, CI / test must pass."

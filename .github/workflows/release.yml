@@ -1,0 +1,159 @@
+# Cut a GitHub release and publish to npm when package.json version is bumped on main.
+#
+# Release process (with main branch protection enabled):
+#   1. Open a PR that bumps "version" in package.json (npm version patch --no-git-tag-version).
+#   2. Merge after CI passes.
+#   3. This workflow tags vX.Y.Z, creates the GitHub release, and runs npm publish.
+#
+# Manual recovery: Actions → Release → Run workflow → enable "force" to publish when
+# GitHub is ahead of npm (e.g. npm publish failed after the release was created).
+#
+# Required repository secret: NPM_TOKEN (npm automation token with publish access).
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - package-lock.json
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Recover failed npm publish (skips if already on npm)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect version bump
+        id: version
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: |
+          NEW=$(node -p "require('./package.json').version")
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+          if [ "$FORCE" = "true" ]; then
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "Manual release requested for v$NEW."
+            exit 0
+          fi
+
+          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "First commit on main — treating as release candidate v$NEW."
+            exit 0
+          fi
+
+          OLD=$(git show HEAD~1:package.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+          if [ "$OLD" = "$NEW" ]; then
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            echo "Version unchanged ($NEW) — skipping release."
+          else
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "Version bumped $OLD → $NEW."
+          fi
+
+      - name: Inspect existing release artifacts
+        id: state
+        if: steps.version.outputs.bumped == 'true'
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: |
+          TAG="v${{ steps.version.outputs.new }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            TAG_EXISTS=true
+          else
+            echo "tag_exists=false" >> "$GITHUB_OUTPUT"
+            TAG_EXISTS=false
+          fi
+
+          if [ "$FORCE" = "true" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Manual run — will publish if npm is behind."
+            exit 0
+          fi
+
+          if [ "$TAG_EXISTS" = "true" ]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "Tag $TAG already exists — skipping."
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Verify npm credentials
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "::error::NPM_TOKEN repository secret is not set. Add an npm automation token under Settings → Secrets → Actions."
+            exit 1
+          fi
+
+      - name: Check npm registry
+        id: npm
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.new }}"
+          if npm view "@farskid/kilid@${VERSION}" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "@farskid/kilid@${VERSION} is already on npm."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "@farskid/kilid@${VERSION} is not on npm yet."
+          fi
+
+      - run: npm ci
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true' && steps.npm.outputs.published == 'false'
+
+      - run: npm run build
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true' && steps.npm.outputs.published == 'false'
+
+      - run: npm run typecheck
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true' && steps.npm.outputs.published == 'false'
+
+      - run: npm test
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true' && steps.npm.outputs.published == 'false'
+
+      - run: npm run size
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true' && steps.npm.outputs.published == 'false'
+
+      - name: Create GitHub release
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true' && steps.state.outputs.tag_exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.version.outputs.new }}" \
+            --title "v${{ steps.version.outputs.new }}" \
+            --generate-notes
+
+      - name: Publish to npm
+        if: steps.version.outputs.bumped == 'true' && steps.state.outputs.should_release == 'true' && steps.npm.outputs.published == 'false'
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
