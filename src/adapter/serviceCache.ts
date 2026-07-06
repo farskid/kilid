@@ -1,14 +1,10 @@
-/** Refcounted, per-(target, service-options) service sharing for React hooks. */
+/** Refcounted, per-(target, service-options) service sharing for framework adapters. */
 
 export interface ServiceCache<T extends { dispose(): void }, O extends object> {
   acquire(target: EventTarget, options: O): T;
   release(target: EventTarget, options: O): void;
 }
 
-/**
- * Create a refcounted service cache. Each hook on the same target with the same
- * service options reuses one service instance (one DOM listener per event type).
- */
 export function createServiceCache<T extends { dispose(): void }, O extends object>(
   factory: (target: EventTarget, options: O) => T,
   keyOf: (options: O) => string
