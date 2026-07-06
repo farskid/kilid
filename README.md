@@ -228,6 +228,29 @@ dispatchPointerBinding(canvas, MouseButton.Left, 'down');
 
 Also exported: `dispatchKeyPart`, `dispatchKeybindingString`, `keyCodeToDomCode`.
 
+### Command palette (cmdk / kbar)
+
+[cmdk](https://github.com/pacocoursey/cmdk) and [kbar](https://github.com/timc1/kbar) render the palette UI — kilid handles **global** shortcuts to open/close it and app-wide bindings (`⌘S`, etc.) with `when` guards:
+
+```ts
+import { KeyMod, KeyCode, keybindings } from '@farskid/kilid';
+
+const keys = keybindings(document, { capture: true });
+let paletteOpen = false;
+
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyK, () => {
+  paletteOpen = true;
+  setOpen(true);
+}, { when: () => !paletteOpen, preventDefault: true });
+
+keys.add(KeyCode.Escape, () => {
+  paletteOpen = false;
+  setOpen(false);
+}, { when: () => paletteOpen });
+```
+
+In React, use `useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyK, open, { when: () => !open })` in your root layout. cmdk/kbar own arrow-key navigation inside the open palette.
+
 ### Radix UI / shadcn (dialogs, menus, command)
 
 Radix primitives (shadcn/ui) manage focus traps inside overlays. kilid handles **global** shortcuts with `when` guards tied to your `open` state:
@@ -290,6 +313,22 @@ Hook options mirror the core API: `target` (EventTarget or ref, default `window`
 - **Latest-ref handlers** — inline closures are fine; changing the handler or guard re-registers nothing and costs zero per-render work.
 - **Structural deps only** — bindings re-register only when the encoding, target, kind or flags actually change; inline `pointerType` arrays cause no churn.
 - **Refcounted service sharing** — hooks on the same target *and* the same service options (`capture`, `isMac`, …) share one listener; the last unmount disposes it.
+
+### Vue — `@farskid/kilid/vue`
+
+Composables: `useKeybinding`, `useChordKeybinding`, `useParsedKeybinding`, `usePointerBinding`. Accept Vue refs for `target` via `{ value }`.
+
+### Solid — `@farskid/kilid/solid`
+
+`createKeybinding`, `createChordKeybinding`, `createParsedKeybinding`, `createPointerBinding` — pass accessor functions for handlers.
+
+### Svelte — `@farskid/kilid/svelte`
+
+`bindKeybinding`, `bindChordKeybinding`, `bindParsedKeybinding`, `bindPointerBinding` — return cleanup; wrap in `$effect`.
+
+### Angular — `@farskid/kilid/angular`
+
+`bindKeybinding` / `bindPointerBinding` for use in `afterNextRender` or services. Standalone attribute directives are in `src/angular/directives.ts` (copy into your app).
 
 ## Performance & size
 
