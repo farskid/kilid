@@ -228,6 +228,29 @@ dispatchPointerBinding(canvas, MouseButton.Left, 'down');
 
 Also exported: `dispatchKeyPart`, `dispatchKeybindingString`, `keyCodeToDomCode`.
 
+### Command palette (cmdk / kbar)
+
+[cmdk](https://github.com/pacocoursey/cmdk) and [kbar](https://github.com/timc1/kbar) render the palette UI — kilid handles **global** shortcuts to open/close it and app-wide bindings (`⌘S`, etc.) with `when` guards:
+
+```ts
+import { KeyMod, KeyCode, keybindings } from '@farskid/kilid';
+
+const keys = keybindings(document, { capture: true });
+let paletteOpen = false;
+
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyK, () => {
+  paletteOpen = true;
+  setOpen(true);
+}, { when: () => !paletteOpen, preventDefault: true });
+
+keys.add(KeyCode.Escape, () => {
+  paletteOpen = false;
+  setOpen(false);
+}, { when: () => paletteOpen });
+```
+
+In React, use `useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyK, open, { when: () => !open })` in your root layout. cmdk/kbar own arrow-key navigation inside the open palette.
+
 ## React adapter
 
 `@farskid/kilid/react` is a separate build entry with `react` as an optional peer dependency — if you never import it, no React-related code enters your bundle. Hooks are split for tree-shaking: `useKeybinding` (singles only), `useChordKeybinding` (chords), `useParsedKeybinding` (strings + parser), and `usePointerBinding`.

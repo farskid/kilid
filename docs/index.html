@@ -772,6 +772,45 @@ dispatchPointerBinding(el, MouseButton.Left, 'down');</code></pre>
       <code>dispatchKeybindingString</code> (pulls in the parser), and
       <code>keyCodeToDomCode</code> for custom fixtures.
     </p>
+
+    <h3>Command palette (cmdk / kbar)</h3>
+    <p>
+      <a href="https://github.com/pacocoursey/cmdk">cmdk</a> and
+      <a href="https://github.com/timc1/kbar">kbar</a> render the palette UI and handle
+      in-palette keyboard navigation — but global shortcuts to <em>open</em> the palette
+      (<code>⌘K</code>, <code>⌘⇧P</code>) belong on <code>document</code> with kilid.
+      Use <code>when</code> so bindings don't fire while the palette is open.
+    </p>
+    <pre><code>import { KeyMod, KeyCode, keybindings } from '@farskid/kilid';
+import { Command } from 'cmdk'; // or KBarProvider from kbar
+
+const keys = keybindings(document, { capture: true });
+
+let paletteOpen = false;
+
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyK, () =&gt; {
+  paletteOpen = true;
+  setOpen(true);
+}, {
+  when: () =&gt; !paletteOpen,
+  preventDefault: true,
+});
+
+keys.add(KeyCode.Escape, () =&gt; {
+  paletteOpen = false;
+  setOpen(false);
+}, {
+  when: () =&gt; paletteOpen,
+});
+
+// cmdk handles arrow keys / Enter inside the open dialog.
+// kilid handles global open/close and app shortcuts (⌘S, etc.) with when guards.</code></pre>
+    <p>
+      <strong>React:</strong> register in a root layout effect or
+      <code>useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyK, open, &#123; when: () =&gt; !open &#125;)</code>.
+      <strong>kbar:</strong> same pattern — kilid opens <code>KBarProvider</code>,
+      kbar owns the action list.
+    </p>
   </div>
 </section>
 
