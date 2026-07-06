@@ -30,6 +30,7 @@ const SCENARIOS = [
   // normalization + legacy dual-hash dispatch), ~450 B minified.
   { file: 'core-keyboard-pointer.mjs', name: 'core: keyboard + pointer', budget: 5_800 },
   { file: 'core-everything.mjs', name: 'core: everything (incl. parse/format)', budget: 8_700 },
+  { file: 'testing-helpers.mjs', name: 'testing: dispatch helpers', budget: 4_000 },
   {
     file: 'react-keybinding-only.mjs',
     name: 'react: useKeybinding only (react external)',

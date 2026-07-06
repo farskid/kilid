@@ -373,6 +373,8 @@
       <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">☰</button>
     </div>
     <nav id="site-nav">
+      <a href="#why">Why</a>
+      <a href="#comparison">Compare</a>
       <a href="#quick-start">Quick start</a>
       <a href="#api">API</a>
       <a href="#recipes">Recipes</a>
@@ -446,6 +448,109 @@
         <p>Pointer events subsume mouse. A single service covers down/move/click/wheel with the same modifier encoding, plus pen/touch filters.</p>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="comparison">
+  <div class="wrap">
+    <h2>How kilid compares</h2>
+    <p class="lede">
+      kilid targets apps that need <strong>keyboard and pointer</strong> bindings in one tiny,
+      tree-shakeable package. Most alternatives cover keyboard only — or ship a much larger
+      runtime. Competitor bundle sizes are approximate (minified + gzip, typical single-import
+      usage on Bundlephobia / esbuild); kilid numbers are from this repo's CI size scenarios.
+    </p>
+    <div class="table-wrap"><table>
+      <tr>
+        <th>Library</th>
+        <th>Keyboard</th>
+        <th>Chords</th>
+        <th>Pointer / mouse</th>
+        <th>Zero deps</th>
+        <th>Tree-shakeable</th>
+        <th>Framework hooks</th>
+        <th class="num">Typical core gzip</th>
+      </tr>
+      <tr>
+        <td><strong>kilid</strong></td>
+        <td>✓</td>
+        <td>✓ <span class="dim">opt-in</span></td>
+        <td>✓</td>
+        <td>✓</td>
+        <td>✓</td>
+        <td>React</td>
+        <td class="num"><strong>1.6 KB</strong></td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/ccampbell/mousetrap">Mousetrap</a></td>
+        <td>✓</td>
+        <td>✓</td>
+        <td>—</td>
+        <td>✓</td>
+        <td>—</td>
+        <td>—</td>
+        <td class="num">~2 KB</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/jaywcjlove/hotkeys-js">hotkeys-js</a></td>
+        <td>✓</td>
+        <td>—</td>
+        <td>—</td>
+        <td>✓</td>
+        <td>partial</td>
+        <td>—</td>
+        <td class="num">~3 KB</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/jamiebuilds/tinykeys">tinykeys</a></td>
+        <td>✓</td>
+        <td>✓</td>
+        <td>—</td>
+        <td>✓</td>
+        <td>—</td>
+        <td>—</td>
+        <td class="num">~0.7 KB</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/JohannesKlauss/react-hotkeys-hook">react-hotkeys-hook</a></td>
+        <td>✓</td>
+        <td>✓</td>
+        <td>—</td>
+        <td>—</td>
+        <td>partial</td>
+        <td>React</td>
+        <td class="num">~4 KB+</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/TanStack/hotkeys">@tanstack/react-hotkeys</a></td>
+        <td>✓</td>
+        <td>✓</td>
+        <td>—</td>
+        <td>—</td>
+        <td>partial</td>
+        <td>React</td>
+        <td class="num">~5 KB+</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/pacocoursey/cmdk">cmdk</a> <span class="dim">(palette UI)</span></td>
+        <td>partial</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>React</td>
+        <td class="num">~8 KB+</td>
+      </tr>
+    </table></div>
+    <p>
+      <strong>When kilid fits:</strong> editors, canvases, dashboards — anywhere you want
+      <code>Cmd+Click</code>, pen/touch filters, and <code>Ctrl+K Ctrl+S</code> chords beside
+      plain <code>Cmd+S</code>, without ad-hoc <code>addEventListener</code> sprawl.
+      <strong>When something else fits:</strong> keyboard-only hotkeys in a React app
+      (<code>react-hotkeys-hook</code>, <code>tinykeys</code>); a command palette UI
+      (<code>cmdk</code> — pair it with kilid for global shortcuts, see
+      <a href="#recipes">Recipes</a>).
+    </p>
   </div>
 </section>
 
@@ -651,6 +756,29 @@ pointer.add(MouseButton.Left, 'click', (e) =&gt; {
 }, {
   when: () =&gt; !modalIsOpen, // app-state guard, checked before the handler runs
 });</code></pre>
+
+    <h3>Testing (Vitest / Playwright)</h3>
+    <p>
+      Import <code>@farskid/kilid/testing</code> to dispatch DOM events that match the same
+      numeric encodings your app registers — no hand-rolled <code>KeyboardEvent</code> objects
+      with wrong modifier flags.
+    </p>
+    <pre><code>import { KeyMod, KeyCode, MouseButton, keybindings } from '@farskid/kilid';
+import { dispatchKeybinding, dispatchPointerBinding } from '@farskid/kilid/testing';
+
+const keys = keybindings(window);
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, save);
+
+dispatchKeybinding(window, KeyMod.CtrlCmd | KeyCode.KeyS);
+expect(save).toHaveBeenCalled();
+
+const el = document.getElementById('canvas')!;
+dispatchPointerBinding(el, MouseButton.Left, 'down');</code></pre>
+    <p>
+      Also exported: <code>dispatchKeyPart</code> (single key of a chord),
+      <code>dispatchKeybindingString</code> (pulls in the parser), and
+      <code>keyCodeToDomCode</code> for custom fixtures.
+    </p>
   </div>
 </section>
 
