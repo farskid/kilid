@@ -69,6 +69,14 @@ function decodePart(part: number, isMac: boolean): ResolvedChord {
 }
 
 /**
+ * Decode a single keybinding part with platform-resolved modifiers, allowing
+ * a zero key code (modifier-only encodings, used by pointer move bindings).
+ */
+export function decodeKeybindingPart(part: number, isMac: boolean): ResolvedChord {
+  return decodePart(part & 0x0000ffff, isMac);
+}
+
+/**
  * Decode an encoded keybinding into 1 or 2 platform-resolved chord parts.
  * Returns `null` for `0` / bindings without a key code in the first part.
  */

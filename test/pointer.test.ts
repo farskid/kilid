@@ -4,7 +4,14 @@ import { KeyMod, MouseButton, pointerBindings } from '../src/index.js';
 function pointer(
   target: EventTarget,
   type: string,
-  init: { button?: number; pointerType?: string; ctrl?: boolean; shift?: boolean } = {}
+  init: {
+    button?: number;
+    pointerType?: string;
+    ctrl?: boolean;
+    shift?: boolean;
+    alt?: boolean;
+    meta?: boolean;
+  } = {}
 ): PointerEvent {
   // happy-dom may not expose a PointerEvent constructor with full init
   // support, so fall back to a MouseEvent with the extra fields patched on.
@@ -12,6 +19,8 @@ function pointer(
     button: init.button ?? 0,
     ctrlKey: init.ctrl ?? false,
     shiftKey: init.shift ?? false,
+    altKey: init.alt ?? false,
+    metaKey: init.meta ?? false,
     cancelable: true,
     bubbles: true,
   };
@@ -100,11 +109,54 @@ describe('pointerBindings', () => {
     expect(penOrTouch).toHaveBeenCalledTimes(2);
   });
 
-  it('treats move events (button === -1) as Left', () => {
+  it('buttonless overload: add("move", handler) fires for any move', () => {
     const handler = vi.fn();
-    service.add(MouseButton.Left, 'move', handler);
+    service.add('move', handler);
     pointer(target, 'pointermove', { button: -1 });
     expect(handler).toHaveBeenCalledTimes(1);
+    pointer(target, 'pointermove', { button: -1, shift: true });
+    expect(handler).toHaveBeenCalledTimes(1); // modifiers must match (none registered)
+  });
+
+  it('modifier-only encoding: move while Alt is held', () => {
+    const handler = vi.fn();
+    service.add(KeyMod.Alt, 'move', handler);
+    pointer(target, 'pointermove', { button: -1 });
+    expect(handler).not.toHaveBeenCalled();
+    pointer(target, 'pointermove', { button: -1, alt: true });
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('modifier-only encoding resolves CtrlCmd per platform', () => {
+    const macService = pointerBindings(target, { isMac: true });
+    const handler = vi.fn();
+    macService.add(KeyMod.CtrlCmd | KeyMod.Alt, 'move', handler);
+    pointer(target, 'pointermove', { button: -1, ctrl: true, alt: true });
+    expect(handler).not.toHaveBeenCalled();
+    pointer(target, 'pointermove', { button: -1, meta: true, alt: true });
+    expect(handler).toHaveBeenCalledTimes(1);
+    macService.dispose();
+  });
+
+  it('legacy MouseButton.Left move bindings still fire (deprecated)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const handler = vi.fn();
+    service.add(MouseButton.Left, 'move', handler);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('deprecated'));
+    pointer(target, 'pointermove', { button: -1 });
+    expect(handler).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('non-Left buttons on buttonless kinds register nothing and warn', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const handler = vi.fn();
+    const off = service.add(MouseButton.Middle, 'move', handler);
+    pointer(target, 'pointermove', { button: -1 });
+    expect(handler).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('carry no button'));
+    off();
+    warn.mockRestore();
   });
 
   it('dispose removes all listeners', () => {

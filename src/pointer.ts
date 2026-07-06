@@ -1,4 +1,4 @@
-import { chordHashFromParts, decodeKeybinding } from './keybindings.js';
+import { chordHashFromParts, decodeKeybinding, decodeKeybindingPart } from './keybindings.js';
 import type { Unsubscribe } from './keyboard.js';
 import { detectIsMac } from './platform.js';
 
@@ -40,6 +40,16 @@ export type PointerEventKind =
   | 'dblclick'
   | 'contextmenu'
   | 'wheel';
+
+/**
+ * Kinds whose DOM events carry no meaningful `button` (`event.button` is
+ * `-1`): bindings for these take no `MouseButton` — only optional modifiers.
+ */
+export type PointerButtonlessKind = 'move' | 'enter' | 'leave' | 'cancel';
+
+const BUTTONLESS_KINDS: ReadonlySet<PointerEventKind> = /* @__PURE__ */ new Set<PointerEventKind>(
+  ['move', 'enter', 'leave', 'cancel']
+);
 
 const KIND_TO_DOM: Record<PointerEventKind, string> = {
   down: 'pointerdown',
@@ -84,9 +94,22 @@ export interface PointerBindingsOptions {
 
 export interface PointerBindings {
   /**
+   * Register a buttonless binding (`move`/`enter`/`leave`/`cancel`), e.g.
+   * `pointer.add('move', onDraw)`. Returns an unsubscribe function.
+   */
+  add<K extends PointerButtonlessKind>(
+    kind: K,
+    handler: PointerBindingHandler<K>,
+    options?: PointerBindingOptions
+  ): Unsubscribe;
+  /**
    * Register a binding, e.g.
    * `pointer.add(KeyMod.CtrlCmd | MouseButton.Left, 'click', handler)`.
-   * Chord encodings register nothing. Returns an unsubscribe function.
+   *
+   * For buttonless kinds the encoding must be modifier-only
+   * (`pointer.add(KeyMod.Alt, 'move', handler)` = move while Alt is held);
+   * button bits there register nothing (dev builds warn). Chord encodings
+   * register nothing. Returns an unsubscribe function.
    */
   add<K extends PointerEventKind>(
     binding: number,
@@ -138,8 +161,9 @@ function wheelDirection(event: WheelEvent): number {
  * bindings can `preventDefault`.
  *
  * For `move`/`enter`/`leave`/`cancel` events (where `button` is `-1`),
- * bindings registered on {@link MouseButton.Left} match regardless of which
- * buttons are held; use `when` with `event.buttons` for stricter filtering.
+ * register with the buttonless overload — `add('move', handler)` — or a
+ * modifier-only encoding (`add(KeyMod.Alt, 'move', handler)` fires only while
+ * Alt is held). Use `when` with `event.buttons` to filter by held buttons.
  */
 export function pointerBindings(target: EventTarget, options: PointerBindingsOptions = {}): PointerBindings {
   const isMac = options.isMac ?? detectIsMac();
@@ -153,18 +177,18 @@ export function pointerBindings(target: EventTarget, options: PointerBindingsOpt
     if (map === undefined) {
       return;
     }
-    const code =
-      kind === 'wheel'
-        ? wheelDirection(event as WheelEvent)
-        : event.button >= 0
-          ? event.button + 1
-          : MouseButton.Left;
-    if (code === 0) {
+    const buttonless = BUTTONLESS_KINDS.has(kind);
+    const code = kind === 'wheel' ? wheelDirection(event as WheelEvent) : buttonless ? 0 : event.button + 1;
+    if (code === 0 && !buttonless) {
       return;
     }
     const hash = chordHashFromParts(event.ctrlKey, event.shiftKey, event.altKey, event.metaKey, code);
     const bindings = map.get(hash);
-    if (bindings === undefined) {
+    // Legacy: buttonless bindings registered pre-0.2 with MouseButton.Left.
+    const legacy = buttonless
+      ? map.get(chordHashFromParts(event.ctrlKey, event.shiftKey, event.altKey, event.metaKey, MouseButton.Left))
+      : undefined;
+    if (bindings === undefined && legacy === undefined) {
       return;
     }
     // Events without a pointerType (wheel, click in older engines) match all
@@ -173,23 +197,30 @@ export function pointerBindings(target: EventTarget, options: PointerBindingsOpt
     const eventMask = pt === 'mouse' ? 1 : pt === 'pen' ? 2 : pt === 'touch' ? 4 : TYPE_ALL;
     // Index only advances while the slot is stable (handlers may unsubscribe
     // bindings mid-dispatch); see keybindings() dispatch for rationale.
-    for (let i = 0; i < bindings.length; ) {
-      const binding = bindings[i]!;
-      if ((binding.typeMask & eventMask) === 0 || (binding.when !== undefined && !binding.when())) {
-        i++;
-        continue;
+    const run = (list: PointerBinding[] | undefined): void => {
+      if (list === undefined) {
+        return;
       }
-      if (binding.preventDefault) {
-        event.preventDefault();
+      for (let i = 0; i < list.length; ) {
+        const binding = list[i]!;
+        if ((binding.typeMask & eventMask) === 0 || (binding.when !== undefined && !binding.when())) {
+          i++;
+          continue;
+        }
+        if (binding.preventDefault) {
+          event.preventDefault();
+        }
+        if (binding.stopPropagation) {
+          event.stopPropagation();
+        }
+        binding.handler(event);
+        if (list[i] === binding) {
+          i++;
+        }
       }
-      if (binding.stopPropagation) {
-        event.stopPropagation();
-      }
-      binding.handler(event);
-      if (bindings[i] === binding) {
-        i++;
-      }
-    }
+    };
+    run(bindings);
+    run(legacy);
   };
 
   const ensureListener = (kind: PointerEventKind): void => {
@@ -205,21 +236,75 @@ export function pointerBindings(target: EventTarget, options: PointerBindingsOpt
   };
 
   return {
-    add(binding, kind, handler, opts = {}) {
-      const parts = decodeKeybinding(binding, isMac);
-      if (parts === null || parts.length !== 1) {
-        if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    add(
+      bindingOrKind: number | PointerButtonlessKind,
+      kindOrHandler: PointerEventKind | PointerBindingHandler,
+      handlerOrOpts?: PointerBindingHandler | PointerBindingOptions,
+      maybeOpts?: PointerBindingOptions
+    ) {
+      // Normalize the buttonless overload: add('move', handler, opts?).
+      let binding: number;
+      let kind: PointerEventKind;
+      let handler: PointerBindingHandler;
+      let opts: PointerBindingOptions;
+      if (typeof bindingOrKind === 'string') {
+        binding = 0;
+        kind = bindingOrKind;
+        handler = kindOrHandler as PointerBindingHandler;
+        opts = (handlerOrOpts as PointerBindingOptions | undefined) ?? {};
+      } else {
+        binding = bindingOrKind;
+        kind = kindOrHandler as PointerEventKind;
+        handler = handlerOrOpts as PointerBindingHandler;
+        opts = maybeOpts ?? {};
+      }
+
+      const buttonless = BUTTONLESS_KINDS.has(kind);
+      let hash: number;
+      if (buttonless) {
+        const buttonBits = binding & 0xff;
+        if (buttonBits !== 0 && buttonBits !== MouseButton.Left) {
+          // Middle/Right/etc. never fire for buttonless events — refuse loudly
+          // in dev rather than registering a binding that can't match.
+          if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+            console.warn(
+              `[kilid] pointerBindings().add(${binding}, '${kind}'): '${kind}' events carry no button; ` +
+                `use add('${kind}', handler) or a modifier-only encoding like add(KeyMod.Alt, '${kind}', handler). ` +
+                'Nothing was registered.'
+            );
+          }
+          return () => {};
+        }
+        if (
+          buttonBits === MouseButton.Left &&
+          typeof process !== 'undefined' &&
+          process.env.NODE_ENV !== 'production'
+        ) {
           console.warn(
-            `[kilid] pointerBindings().add(${binding}): ` +
-              (parts === null
-                ? 'invalid binding encoding; nothing was registered.'
-                : 'chord encodings are keyboard-only; nothing was registered.')
+            `[kilid] pointerBindings().add(${binding}, '${kind}'): MouseButton.Left is deprecated for ` +
+              `'${kind}' — it matches any ${kind} event, not "left button held". ` +
+              `Use add('${kind}', handler) or a modifier-only encoding instead.`
           );
         }
-        return () => {};
+        const part = decodeKeybindingPart(binding, isMac);
+        // Legacy Left bindings keep their historical hash (dispatch checks both).
+        hash = chordHashFromParts(part.ctrlKey, part.shiftKey, part.altKey, part.metaKey, buttonBits);
+      } else {
+        const parts = decodeKeybinding(binding, isMac);
+        if (parts === null || parts.length !== 1) {
+          if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+            console.warn(
+              `[kilid] pointerBindings().add(${binding}): ` +
+                (parts === null
+                  ? 'invalid binding encoding; nothing was registered.'
+                  : 'chord encodings are keyboard-only; nothing was registered.')
+            );
+          }
+          return () => {};
+        }
+        const part = parts[0]!;
+        hash = chordHashFromParts(part.ctrlKey, part.shiftKey, part.altKey, part.metaKey, part.keyCode);
       }
-      const part = parts[0]!;
-      const hash = chordHashFromParts(part.ctrlKey, part.shiftKey, part.altKey, part.metaKey, part.keyCode);
 
       let map = byKind.get(kind);
       if (map === undefined) {
