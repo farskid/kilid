@@ -365,6 +365,8 @@ npm run build         # tsup -> dist (esm + cjs + d.ts)
 
 The landing page lives in `docs/` and deploys to [GitHub Pages](https://farskid.github.io/kilid/) on every push to `main` that touches `docs/**`.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, PR workflow, and CI expectations. Maintainers: [RELEASING.md](RELEASING.md).
+
 ## License
 
 MIT
