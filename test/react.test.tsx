@@ -281,4 +281,36 @@ describe('usePointerBinding', () => {
     down('pen');
     expect(handler).toHaveBeenCalledTimes(1);
   });
+
+  it('buttonless overload: usePointerBinding("move", handler)', () => {
+    const handler = vi.fn();
+    let elRef: RefObject<HTMLDivElement | null> = { current: null };
+    function Comp() {
+      const ref = useRef<HTMLDivElement>(null);
+      elRef = ref;
+      usePointerBinding('move', handler, { target: ref });
+      return <div ref={ref} />;
+    }
+    render(<Comp />);
+    elRef.current!.dispatchEvent(new MouseEvent('pointermove', { button: -1, bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('modifier-only overload: move while Alt is held', () => {
+    const handler = vi.fn();
+    let elRef: RefObject<HTMLDivElement | null> = { current: null };
+    function Comp() {
+      const ref = useRef<HTMLDivElement>(null);
+      elRef = ref;
+      usePointerBinding(KeyMod.Alt, 'move', handler, { target: ref });
+      return <div ref={ref} />;
+    }
+    render(<Comp />);
+    elRef.current!.dispatchEvent(new MouseEvent('pointermove', { button: -1, bubbles: true }));
+    expect(handler).not.toHaveBeenCalled();
+    elRef.current!.dispatchEvent(
+      new MouseEvent('pointermove', { button: -1, altKey: true, bubbles: true })
+    );
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
 });

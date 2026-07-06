@@ -39,6 +39,7 @@ export {
   pointerBindings,
   type PointerBindings,
   type PointerEventKind,
+  type PointerButtonlessKind,
   type PointerType,
   type PointerBindingHandler,
   type PointerBindingOptions,

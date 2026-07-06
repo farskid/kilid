@@ -630,13 +630,20 @@ pointer.add(KeyMod.CtrlCmd | MouseButton.Left, 'click', addToSelection);
 pointer.add(MouseButton.Middle, 'down', startPan);
 pointer.add(KeyMod.CtrlCmd | MouseButton.WheelUp, 'wheel', zoomIn, { preventDefault: true });
 
-// pen/touch filters
-pointer.add(MouseButton.Left, 'move', onDraw, { pointerType: ['pen', 'touch'] });</code></pre>
+// Buttonless kinds (move/enter/leave/cancel) take no button — with pen/touch filters
+pointer.add('move', onDraw, { pointerType: ['pen', 'touch'] });
+
+// Modifier-only encoding: move while Alt (or Cmd+Alt) is held
+pointer.add(KeyMod.Alt, 'move', onAltDraw);
+pointer.add(KeyMod.CtrlCmd | KeyMod.Alt, 'move', onOrbit);</code></pre>
     <p>
       For <code>move</code>/<code>enter</code>/<code>leave</code>/<code>cancel</code> (where
-      <code>button</code> is <code>-1</code>), bindings on <code>MouseButton.Left</code> match
-      regardless of held buttons — use <code>when</code> with <code>event.buttons</code> for
-      stricter filtering.
+      <code>button</code> is <code>-1</code>), use the buttonless overload
+      <code>add('move', handler)</code> or a modifier-only encoding — button bits register
+      nothing there (dev builds warn). Pointer events don't carry non-modifier key state, so
+      "move while <code>K</code> is held" needs a <code>when</code> guard fed by your own
+      keydown/keyup tracking. Use <code>when</code> with <code>event.buttons</code> to filter
+      by held buttons.
     </p>
 
     <h3>Encoding: <code>KeyMod</code>, <code>KeyCode</code>, <code>MouseButton</code>, <code>KeyChord</code></h3>
