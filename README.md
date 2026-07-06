@@ -255,6 +255,32 @@ keys.add(KeyCode.Escape, () => {
 
 In React, use `useKeybinding(KeyMod.CtrlCmd | KeyCode.KeyK, open, { when: () => !open })` in your root layout. cmdk/kbar own arrow-key navigation inside the open palette.
 
+### Radix UI / shadcn (dialogs, menus, command)
+
+Radix primitives (shadcn/ui) manage focus traps inside overlays. kilid handles **global** shortcuts with `when` guards tied to your `open` state:
+
+```tsx
+import { useState } from 'react';
+import { KeyCode } from '@farskid/kilid';
+import { useKeybinding, useParsedKeybinding } from '@farskid/kilid/react';
+
+function AppShell() {
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  useParsedKeybinding('Ctrl+K', () => setCommandOpen(true), {
+    when: () => !commandOpen,
+    capture: true,
+  });
+  useKeybinding(KeyCode.Escape, () => setCommandOpen(false), {
+    enabled: commandOpen,
+  });
+
+  return <CommandDialog open={commandOpen} onOpenChange={setCommandOpen} />;
+}
+```
+
+Gate destructive globals (`⌘S`, delete) while `Dialog` / `AlertDialog` is open. shadcn `Command` + cmdk owns in-palette navigation; kilid opens it.
+
 ## React adapter
 
 `@farskid/kilid/react` is a separate build entry with `react` as an optional peer dependency — if you never import it, no React-related code enters your bundle. Hooks are split for tree-shaking: `useKeybinding` (singles only), `useChordKeybinding` (chords), `useParsedKeybinding` (strings + parser), and `usePointerBinding`.

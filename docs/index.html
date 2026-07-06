@@ -818,6 +818,57 @@ keys.add(KeyCode.Escape, () =&gt; {
       <strong>kbar:</strong> same pattern — kilid opens <code>KBarProvider</code>,
       kbar owns the action list.
     </p>
+
+    <h3>Radix UI / shadcn (dialogs, menus, command)</h3>
+    <p>
+      Radix primitives (used by <a href="https://ui.shadcn.com">shadcn/ui</a>) manage focus
+      traps and roving tabindex inside open overlays. kilid sits <em>outside</em> that layer:
+      global app shortcuts on <code>document</code>, with <code>when</code> guards tied to
+      your open-state (Radix <code>open</code> prop or shadcn <code>useState</code>).
+    </p>
+    <pre><code>import { KeyMod, KeyCode, keybindings } from '@farskid/kilid';
+// shadcn: Dialog, DropdownMenu, Command (cmdk) — all Radix under the hood
+
+const keys = keybindings(document, { capture: true });
+
+keys.add(KeyMod.CtrlCmd | KeyCode.KeyS, save, {
+  when: () =&gt; !dialogOpen &amp;&amp; !dropdownOpen,
+});
+
+keys.add(KeyCode.Escape, closeTopmostOverlay, {
+  when: () =&gt; dialogOpen || dropdownOpen,
+  preventDefault: false, // let Radix also handle Escape if needed
+});
+
+// shadcn Command palette: ⌘K opens Dialog + Command; kilid registers the shortcut,
+// cmdk handles filtering. Pointer: usePointerBinding on a custom canvas beside shadcn UI.</code></pre>
+    <pre><code>// React + shadcn example
+import { useKeybinding, useParsedKeybinding } from '@farskid/kilid/react';
+
+function AppShell() {
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  useParsedKeybinding('Ctrl+K', () =&gt; setCommandOpen(true), {
+    when: () =&gt; !commandOpen,
+    capture: true,
+  });
+  useKeybinding(KeyCode.Escape, () =&gt; setCommandOpen(false), {
+    enabled: commandOpen,
+  });
+
+  return (
+    &lt;&gt;
+      &lt;CommandDialog open={commandOpen} onOpenChange={setCommandOpen} /&gt;
+      {/* Radix Dialog traps focus; kilid shortcuts are gated by commandOpen */}
+    &lt;/&gt;
+  );
+}</code></pre>
+    <p>
+      <strong>Tip:</strong> disable destructive globals (<code>⌘S</code>, delete shortcuts)
+      while a Radix <code>Dialog</code> or <code>AlertDialog</code> is open. For
+      <code>DropdownMenu</code>, prefer kilid on the trigger's container for pointer
+      shortcuts; menu item selection stays Radix's keyboard handling.
+    </p>
   </div>
 </section>
 
