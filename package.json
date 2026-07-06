@@ -1,6 +1,6 @@
 {
   "name": "@farskid/kilid",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Fast, zero-dependency TypeScript keyboard, mouse and pointer management with a Monaco-style keybinding API",
   "keywords": [
     "keyboard",
@@ -86,10 +86,18 @@
     "@angular/core": ">=17"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "vue": { "optional": true },
-    "solid-js": { "optional": true },
-    "@angular/core": { "optional": true }
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    },
+    "@angular/core": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@angular/core": "^19.2.0",
